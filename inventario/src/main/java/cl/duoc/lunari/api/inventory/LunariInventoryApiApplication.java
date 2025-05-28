@@ -4,10 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class LunariCartApiApplication {
+public class LunariInventoryApiApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(LunariCartApiApplication.class, args);
+		SpringApplication.run(LunariInventoryApiApplication.class, args);
 	}
 
 }
