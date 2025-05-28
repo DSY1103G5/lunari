@@ -8,7 +8,7 @@
 		<version>3.4.5</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>cl.duoc.dsy1103.lunari</groupId>
+	<groupId>cl.duoc.lunari</groupId>
 	<artifactId>lunari-cart-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>lunari-cart-api</name>
