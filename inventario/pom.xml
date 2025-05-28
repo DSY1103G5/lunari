@@ -8,11 +8,11 @@
 		<version>3.4.5</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>cl.duoc.dsy1103.lunari</groupId>
-	<artifactId>lunari-user-api</artifactId>
+	<groupId>cl.duoc.lunari</groupId>
+	<artifactId>lunari-inventory-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>lunari-user-api</name>
-	<description>API usuario para proyecto LUNARi</description>
+	<name>lunari-inventory-api</name>
+	<description>API inventario para proyecto LUNARi</description>
 	<url/>
 	<licenses>
 		<license/>
