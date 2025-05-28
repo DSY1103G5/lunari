@@ -10,6 +10,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PaqueteRecursoServicioRepository extends JpaRepository<PaqueteRecursoServicio, Integer> {
     List<PaqueteRecursoServicio> findByServicioIdServicio(Integer servicioId);
-    List<PaqueteRecursoServicio> findByRecursoIdRecurso(Integer recursoId);
     List<PaqueteRecursoServicio> findByTipoRecursoIdTipoRecurso(Integer tipoRecursoId);
 }

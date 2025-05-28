@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Set;
@@ -17,8 +19,8 @@ public class ServicioAdicional {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "is_servicio_adicional")
-    private Integer isServicioAdicional;
+    @Column(name = "id_servicio_adicional")
+    private Integer idServicioAdicional;
 
     @Column(name = "nombre_adicional", unique = true, nullable = false, length = 150)
     private String nombreAdicional;
@@ -26,7 +28,7 @@ public class ServicioAdicional {
     @Column(name = "descripcion", columnDefinition = "TEXT")
     private String descripcion;
 
-    @Column(name = "precio_adicional", nullable = false, precision = 10, scale = 2)
+    @Column(name = "precio_adicional", precision = 10, scale = 2, nullable = false)
     private BigDecimal precioAdicional;
 
     @Column(name = "is_activo")
@@ -39,6 +41,7 @@ public class ServicioAdicional {
     private OffsetDateTime actualizadoEl;
 
     @OneToMany(mappedBy = "servicioAdicional", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<ServicioServicioAdicional> servicioServicioAdicionales;
 
     @PrePersist
@@ -46,7 +49,7 @@ public class ServicioAdicional {
         this.creadoEl = OffsetDateTime.now();
         this.actualizadoEl = OffsetDateTime.now();
         if (this.isActivo == null) {
-            this.isActivo = true; // Default value from SQL
+            this.isActivo = true;
         }
     }
 

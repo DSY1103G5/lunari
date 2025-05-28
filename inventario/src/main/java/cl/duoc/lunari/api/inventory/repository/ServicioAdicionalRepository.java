@@ -10,6 +10,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ServicioAdicionalRepository extends JpaRepository<ServicioAdicional, Integer> {
-    Optional<ServicioAdicional> findByAddonName(String addonName);
-    List<ServicioAdicional> findByIsActiveTrue();
+    Optional<ServicioAdicional> findByNombreAdicional(String addonName);
+    List<ServicioAdicional> findByIsActivoTrue();
 }

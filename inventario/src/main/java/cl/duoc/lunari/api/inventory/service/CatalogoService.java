@@ -1,18 +1,22 @@
 package cl.duoc.lunari.api.inventory.service;
 
 import cl.duoc.lunari.api.inventory.model.Catalogo;
+import cl.duoc.lunari.api.inventory.model.Categoria;
 import cl.duoc.lunari.api.inventory.repository.CatalogoRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class CatalogoService {
 
-    @Autowired
-    private CatalogoRepository catalogoRepository;
+    private final CatalogoRepository catalogoRepository;
+    private final CategoriaService categoriaService;    public CatalogoService(CatalogoRepository catalogoRepository, CategoriaService categoriaService) {
+        this.catalogoRepository = catalogoRepository;
+        this.categoriaService = categoriaService;
+    }
 
     public List<Catalogo> findAll() {
         return catalogoRepository.findAll();
@@ -20,13 +24,26 @@ public class CatalogoService {
 
     public Optional<Catalogo> findById(Integer id) {
         return catalogoRepository.findById(id);
-    }
-
-    public Catalogo save(Catalogo catalogo) {
+    }    public Catalogo save(Catalogo catalogo) {
+        // If categoria only has ID, fetch the full categoria from database
+        if (catalogo.getCategoria() != null && 
+            catalogo.getCategoria().getIdCategoria() != null) {
+            
+            Optional<Categoria> categoriaCompleta = categoriaService.findById(catalogo.getCategoria().getIdCategoria());
+            if (categoriaCompleta.isPresent()) {
+                catalogo.setCategoria(categoriaCompleta.get());
+            } else {
+                throw new RuntimeException("Categoría con ID " + catalogo.getCategoria().getIdCategoria() + " no encontrada");
+            }
+        }
+        
         return catalogoRepository.save(catalogo);
     }
 
-    public void deleteById(Integer id) {
+    public void deleteCatalogo(Integer id) {
+        if (!catalogoRepository.existsById(id)) {
+            throw new RuntimeException("Servicio no encontrado : " + id);
+        }
         catalogoRepository.deleteById(id);
     }
 
