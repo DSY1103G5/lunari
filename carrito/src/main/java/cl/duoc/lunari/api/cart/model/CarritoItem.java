@@ -35,10 +35,9 @@ public class CarritoItem {
 
     @Column(name = "cantidad", nullable = false)
     @Min(value = 1, message = "Cantidad debe ser mayor a 0")
-    private Integer cantidad = 1;
-
-    @Column(name = "precio_unitario", nullable = false, precision = 10, scale = 2)
+    private Integer cantidad = 1;    @Column(name = "precio_unitario", nullable = false, precision = 10, scale = 2)
     @DecimalMin(value = "0.0", message = "Precio unitario debe ser mayor o igual a 0")
+    @NotNull(message = "Precio unitario no puede estar vacío")
     private BigDecimal precioUnitario;
 
     @Column(name = "subtotal", nullable = false, precision = 12, scale = 2)
