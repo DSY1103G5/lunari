@@ -110,7 +110,7 @@ El microservicio de **carrito** incluye clientes para comunicación con otros se
 - Java 11 o superior
 - Maven 3.6+
 - Base de datos PostgresSQL compatible
-- **Tener configurado los .env con las variables de entorno necesarias para cada microservicio**:
+- **Tener configurado los .env con las variables de entorno necesarias para cada microservicio**
 
 ## Instalación y Ejecución
 
