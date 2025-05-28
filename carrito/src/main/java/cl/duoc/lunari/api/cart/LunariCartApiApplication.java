@@ -1,4 +1,4 @@
-package cl.duoc.dsy1103.lunari.cart;
+package cl.duoc.lunari.api.cart;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
