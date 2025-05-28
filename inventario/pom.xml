@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>cl.duoc.dsy1103.lunari</groupId>
-	<artifactId>lunari-inventory-api</artifactId>
+	<artifactId>lunari-user-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>lunari-inventory-api</name>
-	<description>API inventario para proyecto LUNARi</description>
+	<name>lunari-user-api</name>
+	<description>API usuario para proyecto LUNARi</description>
 	<url/>
 	<licenses>
 		<license/>
