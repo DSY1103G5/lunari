@@ -15,19 +15,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/inventory")
 public class InventoryController {
 
     private final CatalogoService catalogoService;
-    private final CategoriaService categoriaService;
-    private final TipoRecursoService tipoRecursoService;
-    private final PaqueteRecursoService paqueteRecursoService;
 
     @Autowired
     public InventoryController(CatalogoService catalogoService, 
@@ -35,12 +34,7 @@ public class InventoryController {
                              TipoRecursoService tipoRecursoService,
                              PaqueteRecursoService paqueteRecursoService) {
         this.catalogoService = catalogoService;
-        this.categoriaService = categoriaService;
-        this.tipoRecursoService = tipoRecursoService;
-        this.paqueteRecursoService = paqueteRecursoService;
     }
-
-    // ============= CATALOGO ENDPOINTS =============
 
     /**
      * Obtiene todos los servicios del catálogo
@@ -56,6 +50,7 @@ public class InventoryController {
         }
     }
 
+
     /**
      * Obtiene solo los servicios activos del catálogo
      */
@@ -68,21 +63,36 @@ public class InventoryController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error al obtener catálogo activo", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
-    }
-
+    }   
+    
+    
     /**
      * Obtiene un servicio específico por ID
      */
     @GetMapping("/catalogo/{id}")
-    public ResponseEntity<ApiResponse<Catalogo>> getCatalogoById(@PathVariable Integer id) {
-        Optional<Catalogo> catalogoOptional = catalogoService.findById(id);
-        return ResponseUtil.fromOptional(catalogoOptional, "Servicio no encontrado");
+    public ResponseEntity<ApiResponse<Catalogo>> getCatalogoById(@PathVariable String id) {
+        try {
+            Integer idNumerico = Integer.parseInt(id);
+            Optional<Catalogo> catalogoOptional = catalogoService.findById(idNumerico);
+            if (catalogoOptional.isPresent()) {
+                return ResponseEntity.ok(ApiResponse.success(catalogoOptional.get()));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("Servicio no encontrado", HttpStatus.NOT_FOUND.value()));
+            }
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("ID debe ser un número válido", HttpStatus.BAD_REQUEST.value()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error al obtener servicio", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
     }
+
 
     /**
      * Busca servicios por nombre
-     */
-    @GetMapping("/catalogo/buscar")
+     */    @GetMapping("/catalogo/buscar")
     public ResponseEntity<ApiResponse<List<Catalogo>>> buscarServiciosPorNombre(@RequestParam String nombre) {
         if (nombre == null || nombre.trim().isEmpty()) {
             return ResponseEntity.badRequest()
@@ -91,6 +101,10 @@ public class InventoryController {
         
         try {
             List<Catalogo> catalogos = catalogoService.findByNombreContaining(nombre.trim());
+            if (catalogos.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("No se encontraron servicios con el nombre especificado", HttpStatus.NOT_FOUND.value()));
+            }
             return ResponseEntity.ok(ApiResponse.success(catalogos));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -110,8 +124,8 @@ public class InventoryController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error al obtener servicios por categoría", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
-    }
-
+    }   
+    
     /**
      * Crea un nuevo servicio en el catálogo
      */
@@ -124,8 +138,12 @@ public class InventoryController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error("Error al crear servicio: " + e.getMessage(), HttpStatus.BAD_REQUEST.value()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error interno del servidor al crear servicio", HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
+
 
     /**
      * Actualiza un servicio existente
@@ -148,15 +166,16 @@ public class InventoryController {
         }
     }
 
+
     /**
      * Activa un servicio
      */
     @PatchMapping("/catalogo/{id}/activar")
-    public ResponseEntity<ApiResponse<Catalogo>> activarServicio(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<String>> activarServicio(@PathVariable Integer id) {
         try {
             Catalogo servicioActivado = catalogoService.activar(id);
             if (servicioActivado != null) {
-                return ResponseEntity.ok(ApiResponse.success(servicioActivado));
+                return ResponseEntity.ok(ApiResponse.success("Servicio activado correctamente"));
             } else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("Servicio no encontrado", HttpStatus.NOT_FOUND.value()));
@@ -167,15 +186,16 @@ public class InventoryController {
         }
     }
 
+
     /**
      * Desactiva un servicio
      */
     @PatchMapping("/catalogo/{id}/desactivar")
-    public ResponseEntity<ApiResponse<Catalogo>> desactivarServicio(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<String>> desactivarServicio(@PathVariable Integer id) {
         try {
             Catalogo servicioDesactivado = catalogoService.desactivar(id);
             if (servicioDesactivado != null) {
-                return ResponseEntity.ok(ApiResponse.success(servicioDesactivado));
+                return ResponseEntity.ok(ApiResponse.success("Servicio desactivado correctamente"));
             } else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("Servicio no encontrado", HttpStatus.NOT_FOUND.value()));
@@ -186,197 +206,37 @@ public class InventoryController {
         }
     }
 
-    // ============= CATEGORIAS ENDPOINTS =============
-
     /**
-     * Obtiene todas las categorías
+     * Elimina un servicio del catálogo
      */
-    @GetMapping("/categorias")
-    public ResponseEntity<ApiResponse<List<Categoria>>> getAllCategorias() {
+    @DeleteMapping("/catalogo/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Integer id) {
         try {
-            List<Categoria> categorias = categoriaService.findAll();
-            return ResponseEntity.ok(ApiResponse.success(categorias));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener categorías", HttpStatus.INTERNAL_SERVER_ERROR.value()));
-        }
-    }
-
-    /**
-     * Obtiene una categoría por ID
-     */
-    @GetMapping("/categorias/{id}")
-    public ResponseEntity<ApiResponse<Categoria>> getCategoriaById(@PathVariable Integer id) {
-        Optional<Categoria> categoriaOptional = categoriaService.findById(id);
-        return ResponseUtil.fromOptional(categoriaOptional, "Categoría no encontrada");
-    }
-
-    /**
-     * Busca categorías por nombre
-     */
-    @GetMapping("/categorias/buscar")
-    public ResponseEntity<ApiResponse<List<Categoria>>> buscarCategoriasPorNombre(@RequestParam String nombre) {
-        if (nombre == null || nombre.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("El nombre no puede estar vacío", HttpStatus.BAD_REQUEST.value()));
-        }
-        
-        try {
-            List<Categoria> categorias = categoriaService.findByNombreContaining(nombre.trim());
-            return ResponseEntity.ok(ApiResponse.success(categorias));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al buscar categorías", HttpStatus.INTERNAL_SERVER_ERROR.value()));
-        }
-    }
-
-    /**
-     * Crea una nueva categoría
-     */
-    @PostMapping("/categorias")
-    public ResponseEntity<ApiResponse<Categoria>> crearCategoria(@RequestBody Categoria categoria) {
-        try {
-            Categoria nuevaCategoria = categoriaService.save(categoria);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(nuevaCategoria));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error("Error al crear categoría: " + e.getMessage(), HttpStatus.BAD_REQUEST.value()));
-        }
-    }
-
-    // ============= TIPOS DE RECURSO ENDPOINTS =============
-
-    /**
-     * Obtiene todos los tipos de recurso
-     */
-    @GetMapping("/tipos-recurso")
-    public ResponseEntity<ApiResponse<List<TipoRecurso>>> getAllTiposRecurso() {
-        try {
-            List<TipoRecurso> tiposRecurso = tipoRecursoService.findAll();
-            return ResponseEntity.ok(ApiResponse.success(tiposRecurso));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener tipos de recurso", HttpStatus.INTERNAL_SERVER_ERROR.value()));
-        }
-    }
-
-    /**
-     * Obtiene un tipo de recurso por ID
-     */
-    @GetMapping("/tipos-recurso/{id}")
-    public ResponseEntity<ApiResponse<TipoRecurso>> getTipoRecursoById(@PathVariable Integer id) {
-        Optional<TipoRecurso> tipoRecursoOptional = tipoRecursoService.findById(id);
-        return ResponseUtil.fromOptional(tipoRecursoOptional, "Tipo de recurso no encontrado");
-    }
-
-    /**
-     * Busca tipos de recurso por unidad de medida
-     */
-    @GetMapping("/tipos-recurso/unidad-medida")
-    public ResponseEntity<ApiResponse<List<TipoRecurso>>> getTiposRecursoPorUnidadMedida(@RequestParam String unidadMedida) {
-        if (unidadMedida == null || unidadMedida.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("La unidad de medida no puede estar vacía", HttpStatus.BAD_REQUEST.value()));
-        }
-        
-        try {
-            List<TipoRecurso> tiposRecurso = tipoRecursoService.findByUnidadMedida(unidadMedida.trim());
-            return ResponseEntity.ok(ApiResponse.success(tiposRecurso));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al buscar tipos de recurso", HttpStatus.INTERNAL_SERVER_ERROR.value()));
-        }
-    }
-
-    /**
-     * Crea un nuevo tipo de recurso
-     */
-    @PostMapping("/tipos-recurso")
-    public ResponseEntity<ApiResponse<TipoRecurso>> crearTipoRecurso(@RequestBody TipoRecurso tipoRecurso) {
-        try {
-            TipoRecurso nuevoTipoRecurso = tipoRecursoService.save(tipoRecurso);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(nuevoTipoRecurso));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error("Error al crear tipo de recurso: " + e.getMessage(), HttpStatus.BAD_REQUEST.value()));
-        }
-    }
-
-    // ============= PAQUETES RECURSO SERVICIO ENDPOINTS =============
-
-    /**
-     * Obtiene recursos asociados a un servicio específico
-     */
-    @GetMapping("/servicios/{servicioId}/recursos")
-    public ResponseEntity<ApiResponse<List<PaqueteRecursoServicio>>> getRecursosPorServicio(@PathVariable Integer servicioId) {
-        try {
-            List<PaqueteRecursoServicio> recursos = paqueteRecursoService.findByServicio(servicioId);
-            return ResponseEntity.ok(ApiResponse.success(recursos));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener recursos del servicio", HttpStatus.INTERNAL_SERVER_ERROR.value()));
-        }
-    }
-
-    /**
-     * Obtiene servicios que utilizan un tipo de recurso específico
-     */
-    @GetMapping("/tipos-recurso/{tipoRecursoId}/servicios")
-    public ResponseEntity<ApiResponse<List<PaqueteRecursoServicio>>> getServiciosPorTipoRecurso(@PathVariable Integer tipoRecursoId) {
-        try {
-            List<PaqueteRecursoServicio> paquetes = paqueteRecursoService.findByTipoRecurso(tipoRecursoId);
-            return ResponseEntity.ok(ApiResponse.success(paquetes));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener servicios por tipo de recurso", HttpStatus.INTERNAL_SERVER_ERROR.value()));
-        }
-    }
-
-    /**
-     * Calcula el costo total de recursos para un servicio
-     */
-    @GetMapping("/servicios/{servicioId}/costo-recursos")
-    public ResponseEntity<ApiResponse<BigDecimal>> calcularCostoRecursos(@PathVariable Integer servicioId) {
-        try {
-            BigDecimal costo = paqueteRecursoService.calcularCostoRecursos(servicioId);
-            return ResponseEntity.ok(ApiResponse.success(costo));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al calcular costo de recursos", HttpStatus.INTERNAL_SERVER_ERROR.value()));
-        }
-    }
-
-    /**
-     * Asocia un recurso a un servicio
-     */
-    @PostMapping("/servicios/{servicioId}/recursos")
-    public ResponseEntity<ApiResponse<PaqueteRecursoServicio>> asociarRecursoAServicio(
-            @PathVariable Integer servicioId, 
-            @RequestBody PaqueteRecursoServicio paqueteRecurso) {
-        try {
-            PaqueteRecursoServicio nuevoPaquete = paqueteRecursoService.save(paqueteRecurso);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(nuevoPaquete));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error("Error al asociar recurso al servicio: " + e.getMessage(), HttpStatus.BAD_REQUEST.value()));
-        }
-    }
-
-    /**
-     * Elimina la asociación de un recurso con un servicio
-     */
-    @DeleteMapping("/paquetes-recurso/{paqueteId}")
-    public ResponseEntity<ApiResponse<Void>> eliminarPaqueteRecurso(@PathVariable Integer paqueteId) {
-        try {
-            paqueteRecursoService.deleteById(paqueteId);
+            catalogoService.deleteCatalogo(id);
             return ResponseEntity.status(HttpStatus.NO_CONTENT)
                     .body(ApiResponse.success(null));
-        } catch (RuntimeException e) {
+        } catch (RuntimeException e) { // Replace with specific exception
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.error("Paquete de recurso no encontrado", HttpStatus.NOT_FOUND.value()));
+                    .body(ApiResponse.error("Servicio no encontrado", HttpStatus.NOT_FOUND.value()));
         }
+    }
+
+
+
+
+
+   /**
+     * Maneja errores de deserialización JSON
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleJsonParseError(HttpMessageNotReadableException ex) {
+        String errorMessage = "Error en formato JSON: " + ex.getMostSpecificCause().getMessage();
+        
+        if (ex.getMessage().contains("Cannot deserialize")) {
+            errorMessage = "Error en el formato de los datos JSON. Verifique que todos los campos tengan el tipo correcto.";
+        }
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(errorMessage, HttpStatus.BAD_REQUEST.value()));
     }
 }

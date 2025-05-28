@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -19,10 +22,8 @@ public class Catalogo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_servicio")
-    private Integer idServicio;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "is_categoria", referencedColumnName = "id_categoria", foreignKey = @ForeignKey(name = "FK_SERVICE_CATEGORY"))
+    private Integer idServicio;    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_categoria", foreignKey = @ForeignKey(name = "FK_SERVICE_CATEGORY"))
     private Categoria categoria;
 
     @Column(name = "nombre_servicio", unique = true, nullable = false, length = 255)
@@ -44,12 +45,12 @@ public class Catalogo {
     private OffsetDateTime creadoEl;
 
     @Column(name = "actualizado_el", columnDefinition = "TIMESTAMP WITH TIME ZONE")
-    private OffsetDateTime actualizadoEl;
-
-    @OneToMany(mappedBy = "servicio", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private OffsetDateTime actualizadoEl;    @OneToMany(mappedBy = "servicio", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<PaqueteRecursoServicio> paqueteRecursoServicios;
 
     @OneToMany(mappedBy = "servicio", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<ServicioServicioAdicional> servicioServicioAdicionales;
 
     @PrePersist
@@ -64,5 +65,21 @@ public class Catalogo {
     @PreUpdate
     protected void onUpdate() {
         this.actualizadoEl = OffsetDateTime.now();
+    }
+    
+    /**
+     * Custom setter to handle categoria as either ID (number) or full object
+     */
+    @JsonSetter("categoria")
+    public void setCategoriaFromJson(JsonNode categoriaNode) {
+        if (categoriaNode.isNumber()) {
+            // If it's a number, create a Categoria with just the ID
+            Categoria cat = new Categoria();
+            cat.setIdCategoria(categoriaNode.asInt());
+            this.categoria = cat;
+        } else if (categoriaNode.isObject()) {
+            // If it's an object, handle it normally (Jackson will deserialize it)
+            // This case is handled by the normal categoria setter
+        }
     }
 }

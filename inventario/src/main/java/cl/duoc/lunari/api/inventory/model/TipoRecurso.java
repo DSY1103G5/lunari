@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -12,8 +13,8 @@ import java.util.Set;
 @Entity
 @Table(name = "tiporecurso")
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class TipoRecurso {
 
     @Id
@@ -27,7 +28,7 @@ public class TipoRecurso {
     @Column(name = "unidad_medida", nullable = false, length = 50)
     private String unidadMedida;
 
-    @Column(name = "tarifa_base_por_hora", nullable = false, precision = 10, scale = 2)
+    @Column(name = "tarifa_base_por_hora", precision = 10, scale = 2)
     private BigDecimal tarifaBasePorHora;
 
     @Column(name = "descripcion", columnDefinition = "TEXT")
@@ -40,6 +41,7 @@ public class TipoRecurso {
     private OffsetDateTime actualizadoEl;
 
     @OneToMany(mappedBy = "tipoRecurso", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<PaqueteRecursoServicio> paqueteRecursoServicios;
 
     @PrePersist

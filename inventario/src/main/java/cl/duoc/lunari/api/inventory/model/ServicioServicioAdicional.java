@@ -4,10 +4,9 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.io.Serializable;
 import java.time.OffsetDateTime;
-import java.util.Objects;
 
 /**
  * Junction table for many-to-many relationship between services and additional services.
@@ -26,9 +25,10 @@ public class ServicioServicioAdicional {
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("idServicio")
     @JoinColumn(name = "id_servicio")
+    @JsonIgnore
     private Catalogo servicio;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @MapsId("idServicioAdicional")
     @JoinColumn(name = "id_servicio_adicional")
     private ServicioAdicional servicioAdicional;
@@ -42,26 +42,14 @@ public class ServicioServicioAdicional {
     }
 
     @Embeddable
-    public static class ServicioServicioAdicionalId implements Serializable {
-
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ServicioServicioAdicionalId implements java.io.Serializable {
         @Column(name = "id_servicio")
         private Integer idServicio;
 
-        @Column(name = "id_servicio_adicional")
+        @Column(name = "id_servicio_adicional") 
         private Integer idServicioAdicional;
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ServicioServicioAdicionalId that = (ServicioServicioAdicionalId) o;
-            return Objects.equals(idServicio, that.idServicio) &&
-                   Objects.equals(idServicioAdicional, that.idServicioAdicional);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(idServicio, idServicioAdicional);
-        }
     }
 }

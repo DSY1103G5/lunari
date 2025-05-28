@@ -10,6 +10,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ServicioServicioAdicionalRepository extends JpaRepository<ServicioServicioAdicional, ServicioServicioAdicionalId> {
-    List<ServicioServicioAdicional> findByServiceCatalog_ServiceId(Integer serviceId);
-    List<ServicioServicioAdicional> findByServiceAddon_AddonId(Integer addonId);
 }

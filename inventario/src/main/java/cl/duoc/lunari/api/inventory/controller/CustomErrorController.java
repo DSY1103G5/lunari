@@ -1,44 +1,34 @@
 package cl.duoc.lunari.api.inventory.controller;
 
-import jakarta.servlet.RequestDispatcher;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.boot.web.error.ErrorAttributeOptions;
-import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.Map;
 
-@Controller
+@RestController
 public class CustomErrorController implements ErrorController {
-
-    private final ErrorAttributes errorAttributes;
-
-    public CustomErrorController(ErrorAttributes errorAttributes) {
-        this.errorAttributes = errorAttributes;
-    }
 
     @RequestMapping("/error")
     public ResponseEntity<Map<String, Object>> handleError(HttpServletRequest request) {
-        ServletWebRequest webRequest = new ServletWebRequest(request);
-        Map<String, Object> errorDetails = errorAttributes.getErrorAttributes(
-                webRequest, ErrorAttributeOptions.of(ErrorAttributeOptions.Include.MESSAGE)
-        );
+        // Get error attributes safely
+        Integer statusCode = (Integer) request.getAttribute("jakarta.servlet.error.status_code");
+        String errorMessage = (String) request.getAttribute("jakarta.servlet.error.message");
+        String requestUri = (String) request.getAttribute("jakarta.servlet.error.request_uri");
 
-        Object statusCode = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
-        HttpStatus status = statusCode != null
-                ? HttpStatus.valueOf(Integer.parseInt(statusCode.toString()))
-                : HttpStatus.INTERNAL_SERVER_ERROR;
+        // Use HashMap instead of Map.of() to handle null values
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("timestamp", System.currentTimeMillis());
+        errorResponse.put("status", statusCode != null ? statusCode : 500);
+        errorResponse.put("error", HttpStatus.valueOf(statusCode != null ? statusCode : 500).getReasonPhrase());
+        errorResponse.put("message", errorMessage != null ? errorMessage : "Internal Server Error");
+        errorResponse.put("path", requestUri != null ? requestUri : "unknown");
 
-        return new ResponseEntity<>(Map.of(
-                "status", status.value(),
-                "error", status.getReasonPhrase(),
-                "message", errorDetails.get("message"),
-                "path", errorDetails.get("path")
-        ), status);
+        HttpStatus status = statusCode != null ? HttpStatus.valueOf(statusCode) : HttpStatus.INTERNAL_SERVER_ERROR;
+        return ResponseEntity.status(status).body(errorResponse);
     }
 }
