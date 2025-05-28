@@ -201,13 +201,14 @@ CREATE TABLE PaqueteRecursoServicio (
     cantidad_estimado DECIMAL(8, 2) NOT NULL CHECK (cantidad_estimado > 0), 
     notas TEXT,
     creado_el TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    actualizado_el TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_servicio) REFERENCES Catalogo(id_servicio) ON DELETE CASCADE,
     FOREIGN KEY (id_tipo_recurso) REFERENCES TipoRecurso(id_tipo_recurso) ON DELETE RESTRICT, 
     UNIQUE (id_servicio, id_tipo_recurso) 
 );
 
 CREATE TABLE ServicioAdicional (
-    is_servicio_adicional SERIAL PRIMARY KEY,
+    id_servicio_adicional SERIAL PRIMARY KEY,
     nombre_adicional VARCHAR(150) UNIQUE NOT NULL,
     descripcion TEXT,
     precio_adicional DECIMAL(10, 2) NOT NULL CHECK (precio_adicional >= 0),
