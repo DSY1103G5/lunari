@@ -116,7 +116,7 @@ El microservicio de **carrito** incluye clientes para comunicación con otros se
 
 1. **Clonar el repositorio**:
    ```bash
-   git clone https://github.com/DSY1103G5/lunari
+   git clone https://github.com/DSY1103G5/lunari.git
    cd lunari
    ```
 
