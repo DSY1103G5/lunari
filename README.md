@@ -42,7 +42,11 @@ LUNARi permite a los usuarios contar con un portal donde pueden ver el avance en
 │       └── application.properties
 ├── script_creacion_tablas.sql    # Script SQL para crear las tablas
 ├── informe.pdf       # Informe técnico del proyecto
-└── README.md         # Este archivo
+├── README.md         # Este archivo
+└── seeds/          # Microservicio de gestión de carrito de compras
+    ├── cart_seed.sql  # Datos de ejemplo para el carrito
+    ├── inventory_seed.sql  # Datos de ejemplo para el inventario
+    └── user_seed.sql  # Datos de ejemplo para los usuarios
 ```
 
 ## Microservicios
