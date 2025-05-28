@@ -1,4 +1,4 @@
-package cl.duoc.dsy1103.lunari.inventory;
+package cl.duoc.lunari.api.inventory;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
