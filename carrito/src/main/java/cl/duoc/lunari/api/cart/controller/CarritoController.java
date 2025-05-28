@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/carrito")
+@RequestMapping("/api/v1/cart")
 @RequiredArgsConstructor
 @Slf4j
 public class CarritoController {

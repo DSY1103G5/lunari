@@ -26,7 +26,7 @@ public class UsuarioServiceClient {
         try {
             log.debug("Verificando existencia del usuario: {}", usuarioId);
             
-            String url = usuarioServiceUrl + "/api/usuarios/" + usuarioId;
+            String url = usuarioServiceUrl + "/api/v1/users/" + usuarioId;
             
             // Hacer llamada HEAD para verificar existencia sin obtener el cuerpo
             restTemplate.headForHeaders(url);
@@ -51,7 +51,7 @@ public class UsuarioServiceClient {
         try {
             log.debug("Obteniendo información del usuario: {}", usuarioId);
             
-            String url = usuarioServiceUrl + "/api/usuarios/" + usuarioId;
+            String url = usuarioServiceUrl + "/api/v1/users/" + usuarioId;
             
             UsuarioInfo usuario = restTemplate.getForObject(url, UsuarioInfo.class);
             

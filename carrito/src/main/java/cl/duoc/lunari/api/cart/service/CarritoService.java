@@ -75,35 +75,43 @@ public class CarritoService {
 
         if (carrito.getEstado() != EstadoCarrito.ACTIVO) {
             throw new RuntimeException("El carrito no está activo");
-        }
-
-        // Verificar que el servicio existe en inventario
+        }        // Verificar que el servicio existe en inventario
         var servicioInfo = inventarioServiceClient.obtenerServicio(servicioId);
+        log.warn("ServicioInfo: " + servicioInfo.getDescripcion());
         if (servicioInfo == null) {
             throw new RuntimeException("Servicio no encontrado: " + servicioId);
+        }
+        
+        // Verificar que el precio del servicio no sea null
+        if (servicioInfo.getPrecioBase() == null) {
+            throw new RuntimeException("El servicio no tiene precio definido: " + servicioId);
         }
 
         // Verificar si el item ya existe en el carrito
         Optional<CarritoItem> itemExistente = carritoItemRepository
-                .findByCarritoIdAndServicioId(carritoId, servicioId);
-
-        CarritoItem item;
+                .findByCarritoIdAndServicioId(carritoId, servicioId);        CarritoItem item;
         if (itemExistente.isPresent()) {
             // Actualizar cantidad del item existente
             item = itemExistente.get();
             item.setCantidad(item.getCantidad() + cantidad);
             item.setPersonalizaciones(personalizaciones);
+            // Asegurar que el precio unitario no sea null
+            if (item.getPrecioUnitario() == null) {
+                item.setPrecioUnitario(servicioInfo.getPrecioBase());
+            }
         } else {
             // Crear nuevo item
             item = new CarritoItem();
             item.setCarrito(carrito);
             item.setServicioId(servicioId);
             item.setCantidad(cantidad);
-            item.setPrecioUnitario(servicioInfo.getPrecio());
+            item.setPrecioUnitario(servicioInfo.getPrecioBase());
             item.setPersonalizaciones(personalizaciones);
+        }        // Calcular subtotal
+        log.info(item.toString());
+        if (item.getPrecioUnitario() == null) {
+            throw new RuntimeException("Error interno: precio unitario es null para el servicio: " + servicioId);
         }
-
-        // Calcular subtotal
         BigDecimal subtotal = item.getPrecioUnitario().multiply(BigDecimal.valueOf(item.getCantidad()));
         item.setSubtotal(subtotal);
 
@@ -174,7 +182,7 @@ public class CarritoService {
         CarritoServicioAdicional servicioAdicional = new CarritoServicioAdicional();
         servicioAdicional.setCarritoItem(item);
         servicioAdicional.setServicioAdicionalId(servicioAdicionalId);
-        servicioAdicional.setPrecioAdicional(servicioAdicionalInfo.getPrecio());
+        servicioAdicional.setPrecioAdicional(servicioAdicionalInfo.getPrecioAdicional());
 
         servicioAdicional = carritoServicioAdicionalRepository.save(servicioAdicional);
         
