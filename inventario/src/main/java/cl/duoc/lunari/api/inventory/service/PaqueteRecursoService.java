@@ -48,7 +48,7 @@ public class PaqueteRecursoService {
 
     private BigDecimal calcularCostoRecurso(PaqueteRecursoServicio paquete) {
         BigDecimal tarifa = paquete.getTipoRecurso().getTarifaBasePorHora();
-        BigDecimal cantidad = BigDecimal.valueOf(paquete.getCantidadEstimado());
+        BigDecimal cantidad = paquete.getCantidadEstimado();
         return tarifa.multiply(cantidad);
     }
 }
