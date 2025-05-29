@@ -1,5 +1,9 @@
 # Microservicios LUNARi
 
+
+https://github.com/user-attachments/assets/4946f639-ffbc-43bf-85b2-8491a84599d7
+
+
 Este proyecto contiene el desarrollo de 3 microservicios para la plataforma LUNARi, empresa dedicada a empoderar emprendedores del comercio minorista mediante soluciones de comercio electrónico.
 
 ## Descripción del Proyecto
