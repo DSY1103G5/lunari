@@ -1,5 +1,7 @@
 # Microservicios LUNARi
 
+
+
 Este proyecto contiene el desarrollo de 3 microservicios para la plataforma LUNARi, empresa dedicada a empoderar emprendedores del comercio minorista mediante soluciones de comercio electrónico.
 
 ## Descripción del Proyecto
@@ -158,6 +160,16 @@ Cada microservicio expone un endpoint principal que maneja su respectivo recurso
 ## Pruebas
 
 Las pruebas se realizan utilizando Postman. Se compartirá una colección de Postman con ejemplos de uso para cada endpoint.
+
+### Coleccion de Usuario
+https://github.com/user-attachments/assets/4946f639-ffbc-43bf-85b2-8491a84599d7
+
+### Coleccion de Inventario
+https://github.com/user-attachments/assets/23afb466-9f81-45f6-8de2-69d9503ea8b1
+
+### Coleccion de Carrito
+https://github.com/user-attachments/assets/1db80e01-047f-4bc6-8b5f-24a0ddb2246b
+
 
 
 ## Arquitectura
