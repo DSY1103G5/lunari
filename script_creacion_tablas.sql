@@ -90,7 +90,7 @@ CREATE INDEX idx_membresia_equipo_usuario ON Membresia_Equipo(id_usuario);
 -- INVENTARIO
 CREATE TABLE Categoria (
     id_categoria SERIAL PRIMARY KEY,
-    nombre_categoria VARCHAR(100) UNIQUE NOT NULL, -- e.g., 'Website Development', 'Digital Marketing', 'Legal Formalization Support'
+    nombre_categoria VARCHAR(100) UNIQUE NOT NULL,
     descripcion TEXT,
     creado_el TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     actualizado_el TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -98,15 +98,15 @@ CREATE TABLE Categoria (
 
 CREATE TABLE Catalogo (
     id_servicio SERIAL PRIMARY KEY,
-    is_categoria INT,
-    nombre_servicio VARCHAR(255) UNIQUE NOT NULL, -- e.g., 'Landing Page Creation', 'E-commerce Basic Package', 'SEO Audit'
+    id_categoria INT,
+    nombre_servicio VARCHAR(255) UNIQUE NOT NULL,
     descripcion TEXT,
-    precio_base DECIMAL(10, 2) CHECK (precio_base >= 0), -- Indicative base price for the service
-    is_activo BOOLEAN DEFAULT TRUE, -- Whether the service is currently offered
-    duracion_estimada_dias INT CHECK (duracion_estimada_dias > 0), -- Optional: typical duration
+    precio_base DECIMAL(10, 2) CHECK (precio_base >= 0),
+    is_activo BOOLEAN DEFAULT TRUE, 
+    duracion_estimada_dias INT CHECK (duracion_estimada_dias > 0),
     creado_el TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     actualizado_el TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (is_categoria) REFERENCES Categoria(id_categoria) ON DELETE SET NULL -- If category is deleted, service is not deleted but loses category
+    FOREIGN KEY (id_categoria) REFERENCES Categoria(id_categoria) ON DELETE SET NULL
 );
 
 CREATE TABLE TipoRecurso (
@@ -146,12 +146,12 @@ CREATE TABLE ServicioServicioAdicional (
     id_servicio INT NOT NULL,
     id_servicio_adicional INT NOT NULL,
     creado_el TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id_servicio, id_servicio_adicional), -- Composite primary key
+    PRIMARY KEY (id_servicio, id_servicio_adicional),
     FOREIGN KEY (id_servicio) REFERENCES Catalogo(id_servicio) ON DELETE CASCADE,
-    FOREIGN KEY (id_servicio_adicional) REFERENCES ServicioAdicional(is_servicio_adicional) ON DELETE CASCADE
+    FOREIGN KEY (id_servicio_adicional) REFERENCES ServicioAdicional(id_servicio_adicional) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_servicio_catalogo_categoriaid ON Catalogo(is_categoria);
+CREATE INDEX idx_servicio_catalogo_categoriaid ON Catalogo(id_categoria);
 CREATE INDEX idx_servicio_catalogo_servicename ON Catalogo(nombre_servicio);
 CREATE INDEX idx_tipo_recurso_nombre ON TipoRecurso(nombre_tipo_recurso);
 CREATE INDEX idx_paquete_recurso_servicioid ON PaqueteRecursoServicio(id_servicio);
