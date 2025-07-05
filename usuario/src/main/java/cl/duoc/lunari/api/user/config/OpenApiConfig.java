@@ -35,7 +35,7 @@ public class OpenApiConfig {
         Info info = new Info()
                 .title("LUNARi User API")
                 .description("API for managing users in the LUNARi project")
-                .version("0.0.1")
+                .version("0.0.2")
                 .contact(contact)
                 .license(license);
 
