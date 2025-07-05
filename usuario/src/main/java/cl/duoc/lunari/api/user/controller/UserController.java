@@ -3,11 +3,11 @@ package cl.duoc.lunari.api.user.controller;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.hateoas.CollectionModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,17 +17,29 @@ import java.util.List;
 import cl.duoc.lunari.api.user.model.User;
 import cl.duoc.lunari.api.user.model.UserRole;
 import cl.duoc.lunari.api.user.service.UserService;
+import cl.duoc.lunari.api.user.dto.UserRepresentation;
+import cl.duoc.lunari.api.user.dto.PagedUserRepresentation;
+import cl.duoc.lunari.api.user.dto.ApiRootDto;
+import cl.duoc.lunari.api.user.assembler.UserModelAssembler;
+import cl.duoc.lunari.api.user.assembler.PagedUserModelAssembler;
 import cl.duoc.lunari.api.payload.ApiResponse;
-import cl.duoc.lunari.api.payload.ResponseUtil;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
 
     private final UserService userService;
+    private final UserModelAssembler userModelAssembler;
+    private final PagedUserModelAssembler pagedUserModelAssembler;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, 
+                         UserModelAssembler userModelAssembler,
+                         PagedUserModelAssembler pagedUserModelAssembler) {
         this.userService = userService;
+        this.userModelAssembler = userModelAssembler;
+        this.pagedUserModelAssembler = pagedUserModelAssembler;
     }
 
     /**
@@ -42,7 +54,7 @@ public class UserController {
      * @return Página de usuarios (HTTP 200)
      */
     @GetMapping("/paginated")
-    public ResponseEntity<ApiResponse<Page<User>>> getUsersPaginated(
+    public ResponseEntity<ApiResponse<PagedUserRepresentation>> getUsersPaginated(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort,
@@ -59,7 +71,11 @@ public class UserController {
             
             Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
             Page<User> users = userService.getUsersPaginated(pageable, active, roleId, companyId);
-            return ResponseEntity.ok(ApiResponse.success(users));
+            
+            PagedUserRepresentation pagedRepresentation = pagedUserModelAssembler.toModel(
+                users, active, roleId, companyId, sort);
+            
+            return ResponseEntity.ok(ApiResponse.success(pagedRepresentation));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error al obtener usuarios: " + e.getMessage(), 
@@ -73,10 +89,24 @@ public class UserController {
      * @return Lista de usuarios (HTTP 200)
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<User>>> getAllUsers(Pageable pageable) {
+    public ResponseEntity<ApiResponse<CollectionModel<UserRepresentation>>> getAllUsers(Pageable pageable) {
         try {
             List<User> users = userService.getAllUsers(pageable);
-            return ResponseEntity.ok(ApiResponse.success(users));
+            List<UserRepresentation> userRepresentations = users.stream()
+                    .map(userModelAssembler::toModel)
+                    .toList();
+                    
+            CollectionModel<UserRepresentation> collectionModel = CollectionModel.of(userRepresentations);
+            collectionModel.add(linkTo(UserController.class).withSelfRel());
+            collectionModel.add(linkTo(methodOn(UserController.class)
+                    .getUsersPaginated(0, 10, "createdAt,desc", null, null, null))
+                    .withRel("paginated"));
+            collectionModel.add(linkTo(methodOn(UserController.class)
+                    .getAllRoles()).withRel("roles"));
+            collectionModel.add(linkTo(methodOn(UserController.class)
+                    .getUserStats()).withRel("stats"));
+            
+            return ResponseEntity.ok(ApiResponse.success(collectionModel));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error al obtener usuarios", HttpStatus.INTERNAL_SERVER_ERROR.value()));
@@ -90,9 +120,15 @@ public class UserController {
      * @return El usuario si se encuentra (HTTP 200), o HTTP 404 si no se encuentra.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<User>> getUserById(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<UserRepresentation>> getUserById(@PathVariable UUID id) {
         Optional<User> userOptional = userService.getUserById(id);
-        return ResponseUtil.fromOptional(userOptional, "Usuario no encontrado");
+        if (userOptional.isPresent()) {
+            UserRepresentation userRepresentation = userModelAssembler.toModel(userOptional.get());
+            return ResponseEntity.ok(ApiResponse.success(userRepresentation));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Usuario no encontrado", HttpStatus.NOT_FOUND.value()));
+        }
     }
 
     /**
@@ -102,7 +138,7 @@ public class UserController {
      * @return El usuario si se encuentra (HTTP 200), o HTTP 404 si no se encuentra.
      */
     @GetMapping("/email")
-    public ResponseEntity<ApiResponse<User>> getUserByEmail(@RequestParam String email) {
+    public ResponseEntity<ApiResponse<UserRepresentation>> getUserByEmail(@RequestParam String email) {
         // Sanitize email parameter
         if (email == null || email.isEmpty()) {
             return ResponseEntity.badRequest()
@@ -116,7 +152,13 @@ public class UserController {
         }
 
         Optional<User> userOptional = userService.getUserByEmail(email);
-        return ResponseUtil.fromOptional(userOptional, "Usuario no encontrado con ese email");
+        if (userOptional.isPresent()) {
+            UserRepresentation userRepresentation = userModelAssembler.toModel(userOptional.get());
+            return ResponseEntity.ok(ApiResponse.success(userRepresentation));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Usuario no encontrado con ese email", HttpStatus.NOT_FOUND.value()));
+        }
     }
 
     /**
@@ -127,11 +169,12 @@ public class UserController {
      * @throws RuntimeException si el usuario ya existe (HTTP 409)
      */
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<User>> registerUser(@RequestBody User user) {
+    public ResponseEntity<ApiResponse<UserRepresentation>> registerUser(@RequestBody User user) {
         try {
             User createdUser = userService.createUser(user);
+            UserRepresentation userRepresentation = userModelAssembler.toModel(createdUser);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success(createdUser));
+                    .body(ApiResponse.success(userRepresentation));
         } catch (RuntimeException e) {
             // Check if it's a duplicate email error
             if (e.getMessage() != null && e.getMessage().contains("Email")) {
@@ -154,10 +197,11 @@ public class UserController {
      *                          puede procesar (HTTP 400 o 422)
      */
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<User>> updateUser(@PathVariable UUID id, @RequestBody User userDetails) {
+    public ResponseEntity<ApiResponse<UserRepresentation>> updateUser(@PathVariable UUID id, @RequestBody User userDetails) {
         try {
             User updatedUser = userService.updateUser(id, userDetails);
-            return ResponseEntity.ok(ApiResponse.success(updatedUser));
+            UserRepresentation userRepresentation = userModelAssembler.toModel(updatedUser);
+            return ResponseEntity.ok(ApiResponse.success(userRepresentation));
         } catch (RuntimeException e) {
             System.out.println("Error: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -192,7 +236,7 @@ public class UserController {
      * @return usuarios que coinciden con la búsqueda
      */
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Page<User>>> searchUsers(
+    public ResponseEntity<ApiResponse<PagedUserRepresentation>> searchUsers(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -205,7 +249,11 @@ public class UserController {
             
             Pageable pageable = PageRequest.of(page, size, Sort.by("firstName").ascending());
             Page<User> users = userService.searchUsers(query.trim(), pageable);
-            return ResponseEntity.ok(ApiResponse.success(users));
+            
+            PagedUserRepresentation pagedRepresentation = pagedUserModelAssembler.toModel(
+                users, null, null, null, "firstName,asc");
+            
+            return ResponseEntity.ok(ApiResponse.success(pagedRepresentation));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error al buscar usuarios: " + e.getMessage(), 
@@ -222,14 +270,18 @@ public class UserController {
      * @return usuarios de la empresa especificada
      */
     @GetMapping("/company/{companyId}")
-    public ResponseEntity<ApiResponse<Page<User>>> getUsersByCompany(
+    public ResponseEntity<ApiResponse<PagedUserRepresentation>> getUsersByCompany(
             @PathVariable UUID companyId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("firstName").ascending());
             Page<User> users = userService.getUsersByCompanyPaginated(companyId, pageable);
-            return ResponseEntity.ok(ApiResponse.success(users));
+            
+            PagedUserRepresentation pagedRepresentation = pagedUserModelAssembler.toModel(
+                users, null, null, companyId, "firstName,asc");
+            
+            return ResponseEntity.ok(ApiResponse.success(pagedRepresentation));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error al obtener usuarios de la empresa: " + e.getMessage(), 
@@ -246,14 +298,18 @@ public class UserController {
      * @return usuarios con el rol especificado
      */
     @GetMapping("/role/{roleId}")
-    public ResponseEntity<ApiResponse<Page<User>>> getUsersByRole(
+    public ResponseEntity<ApiResponse<PagedUserRepresentation>> getUsersByRole(
             @PathVariable Integer roleId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("firstName").ascending());
             Page<User> users = userService.getUsersByRolePaginated(roleId, pageable);
-            return ResponseEntity.ok(ApiResponse.success(users));
+            
+            PagedUserRepresentation pagedRepresentation = pagedUserModelAssembler.toModel(
+                users, null, roleId, null, "firstName,asc");
+                
+            return ResponseEntity.ok(ApiResponse.success(pagedRepresentation));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error al obtener usuarios por rol: " + e.getMessage(), 
@@ -286,10 +342,11 @@ public class UserController {
      * @return usuario actualizado
      */
     @PatchMapping("/{id}/status")
-    public ResponseEntity<ApiResponse<User>> updateUserStatus(@PathVariable UUID id, @RequestParam Boolean active) {
+    public ResponseEntity<ApiResponse<UserRepresentation>> updateUserStatus(@PathVariable UUID id, @RequestParam Boolean active) {
         try {
             User updatedUser = userService.updateUserStatus(id, active);
-            return ResponseEntity.ok(ApiResponse.success(updatedUser));
+            UserRepresentation userRepresentation = userModelAssembler.toModel(updatedUser);
+            return ResponseEntity.ok(ApiResponse.success(userRepresentation));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.error("Usuario no encontrado", HttpStatus.NOT_FOUND.value()));
@@ -380,6 +437,41 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Error al obtener roles: " + e.getMessage(), 
+                            HttpStatus.INTERNAL_SERVER_ERROR.value()));
+        }
+    }
+
+    /**
+     * Endpoint raíz que proporciona enlaces de navegación de la API.
+     * 
+     * @return Enlaces principales de la API de usuarios
+     */
+    @GetMapping("/api")
+    public ResponseEntity<ApiResponse<ApiRootDto>> getApiRoot() {
+        try {
+            ApiRootDto apiRoot = new ApiRootDto();
+            
+            // Set all the links
+            apiRoot.getLinks().setGetAllUsers(linkTo(UserController.class).toString());
+            apiRoot.getLinks().setGetPaginatedUsers(linkTo(methodOn(UserController.class)
+                    .getUsersPaginated(0, 10, "createdAt,desc", null, null, null)).toString());
+            apiRoot.getLinks().setSearchUsers(linkTo(methodOn(UserController.class)
+                    .searchUsers("{query}", 0, 10)).toString());
+            apiRoot.getLinks().setGetUserById(linkTo(methodOn(UserController.class)
+                    .getUserById(null)).toString().replace("null", "{id}"));
+            apiRoot.getLinks().setGetUserByEmail(linkTo(methodOn(UserController.class)
+                    .getUserByEmail("{email}")).toString());
+            apiRoot.getLinks().setRegisterUser(linkTo(methodOn(UserController.class)
+                    .registerUser(null)).toString());
+            apiRoot.getLinks().setGetAllRoles(linkTo(methodOn(UserController.class)
+                    .getAllRoles()).toString());
+            apiRoot.getLinks().setGetUserStats(linkTo(methodOn(UserController.class)
+                    .getUserStats()).toString());
+            
+            return ResponseEntity.ok(ApiResponse.success(apiRoot));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error al obtener enlaces de la API: " + e.getMessage(), 
                             HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
