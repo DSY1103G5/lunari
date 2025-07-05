@@ -11,7 +11,7 @@ import cl.duoc.lunari.api.user.model.User;
 import cl.duoc.lunari.api.user.model.UserRole;
 
 public interface UserService {
-    // CORE FUNCTIONALITY
+    // Funcionalidades básicas
     User createUser(User user);
     List<User> getAllUsers(Pageable pageable);
     Optional<User> getUserById(UUID id);
@@ -19,27 +19,27 @@ public interface UserService {
     User updateUser(UUID id, User userDetails);
     void deleteUser(UUID id);
 
-    // AUTH FUNCTIONALITY
+    // Autenticación
     void verifyUser(String token);
     void updatePassword(UUID id, String newPassword);
 
-    // ROLE MANAGEMENT FUNCTIONALITY
+    // Gestión de roles
     void assignRoleToUser(UUID userId, Integer roleId);
     List<UserRole> getAllRoles();
 
-    // COMPANY MANAGEMENT FUNCTIONALITY
+    // Gestión de empresas
     List<User> getUsersByCompany(UUID companyId);
     void assignUserToCompany(UUID userId, UUID companyId);
 
-    // PAGINATION AND SEARCH FUNCTIONALITY
+    // Paginación y búsqueda
     Page<User> getUsersPaginated(Pageable pageable, Boolean active, Integer roleId, UUID companyId);
     Page<User> searchUsers(String query, Pageable pageable);
     Page<User> getUsersByCompanyPaginated(UUID companyId, Pageable pageable);
     Page<User> getUsersByRolePaginated(Integer roleId, Pageable pageable);
     
-    // STATISTICS FUNCTIONALITY
+    // Estadísticas
     Object getUserStats();
     
-    // STATUS MANAGEMENT FUNCTIONALITY
+    // Gestión de estado
     User updateUserStatus(UUID id, Boolean active);
 }

@@ -1,6 +1,5 @@
 package cl.duoc.lunari.api.user.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,7 +23,6 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
-    @Autowired
     public UserServiceImpl(UserRepository userRepository,
             RoleRepository roleRepository) {
         this.userRepository = userRepository;
@@ -34,7 +32,6 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User createUser(User user) {
-        // Check if email already exists
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             throw new RuntimeException("Email ya existe: " + user.getEmail());
         }
@@ -83,7 +80,7 @@ public class UserServiceImpl implements UserService {
         user.setActive(userDetails.getActive());
 
         if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
-            user.setPassword(userDetails.getPassword()); // Placeholder: In real app, hash it!
+            user.setPassword(userDetails.getPassword());
         }
 
         return userRepository.save(user);
@@ -97,14 +94,9 @@ public class UserServiceImpl implements UserService {
         userRepository.deleteById(id);
     }
 
+    // TODO: Implementar verificación de usuario
     @Override
     public void verifyUser(String token) {
-        // This method would typically:
-        // 1. Validate the verification token
-        // 2. Find the user associated with this token
-        // 3. Update the user's verification status
-
-        // For implementation, you would need a token repository and logic
         throw new UnsupportedOperationException("Method verifyUser not yet implemented");
     }
 
@@ -148,7 +140,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
-    // PAGINATION AND SEARCH FUNCTIONALITY
+    // Paginación y búsqueda de usuarios
     @Override
     public Page<User> getUsersPaginated(Pageable pageable, Boolean active, Integer roleId, UUID companyId) {
         return userRepository.findUsersWithFilters(active, roleId, companyId, pageable);
@@ -169,7 +161,7 @@ public class UserServiceImpl implements UserService {
         return userRepository.findByRoleId(roleId, pageable);
     }
 
-    // STATISTICS FUNCTIONALITY
+    // Estadísticas de usuarios
     @Override
     public Object getUserStats() {
         Map<String, Object> stats = new HashMap<>();
@@ -195,7 +187,7 @@ public class UserServiceImpl implements UserService {
         return stats;
     }
 
-    // STATUS MANAGEMENT FUNCTIONALITY
+    // Gestión de estado del usuario
     @Override
     @Transactional
     public User updateUserStatus(UUID id, Boolean active) {
