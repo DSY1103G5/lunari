@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import cl.duoc.lunari.api.user.model.User;
@@ -30,4 +31,15 @@ public interface UserService {
     List<User> getUsersByCompany(UUID companyId);
     void assignUserToCompany(UUID userId, UUID companyId);
 
+    // PAGINATION AND SEARCH FUNCTIONALITY
+    Page<User> getUsersPaginated(Pageable pageable, Boolean active, Integer roleId, UUID companyId);
+    Page<User> searchUsers(String query, Pageable pageable);
+    Page<User> getUsersByCompanyPaginated(UUID companyId, Pageable pageable);
+    Page<User> getUsersByRolePaginated(Integer roleId, Pageable pageable);
+    
+    // STATISTICS FUNCTIONALITY
+    Object getUserStats();
+    
+    // STATUS MANAGEMENT FUNCTIONALITY
+    User updateUserStatus(UUID id, Boolean active);
 }

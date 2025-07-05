@@ -6,6 +6,6 @@ import org.springframework.stereotype.Repository;
 import cl.duoc.lunari.api.user.model.UserRole;
 
 @Repository
-public interface RoleRepository extends JpaRepository<UserRole, Long> {
+public interface RoleRepository extends JpaRepository<UserRole, Integer> {
 	
 }
