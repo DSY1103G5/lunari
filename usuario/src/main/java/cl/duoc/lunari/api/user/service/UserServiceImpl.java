@@ -1,6 +1,6 @@
 package cl.duoc.lunari.api.user.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,7 +10,9 @@ import cl.duoc.lunari.api.user.model.UserRole;
 import cl.duoc.lunari.api.user.repository.RoleRepository;
 import cl.duoc.lunari.api.user.repository.UserRepository;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,7 +23,6 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
-    @Autowired
     public UserServiceImpl(UserRepository userRepository,
             RoleRepository roleRepository) {
         this.userRepository = userRepository;
@@ -31,7 +32,6 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User createUser(User user) {
-        // Check if email already exists
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             throw new RuntimeException("Email ya existe: " + user.getEmail());
         }
@@ -80,7 +80,7 @@ public class UserServiceImpl implements UserService {
         user.setActive(userDetails.getActive());
 
         if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
-            user.setPassword(userDetails.getPassword()); // Placeholder: In real app, hash it!
+            user.setPassword(userDetails.getPassword());
         }
 
         return userRepository.save(user);
@@ -94,14 +94,9 @@ public class UserServiceImpl implements UserService {
         userRepository.deleteById(id);
     }
 
+    // TODO: Implementar verificación de usuario
     @Override
     public void verifyUser(String token) {
-        // This method would typically:
-        // 1. Validate the verification token
-        // 2. Find the user associated with this token
-        // 3. Update the user's verification status
-
-        // For implementation, you would need a token repository and logic
         throw new UnsupportedOperationException("Method verifyUser not yet implemented");
     }
 
@@ -143,5 +138,63 @@ public class UserServiceImpl implements UserService {
 
         user.setCompanyId(companyId);
         userRepository.save(user);
+    }
+
+    // Paginación y búsqueda de usuarios
+    @Override
+    public Page<User> getUsersPaginated(Pageable pageable, Boolean active, Integer roleId, UUID companyId) {
+        return userRepository.findUsersWithFilters(active, roleId, companyId, pageable);
+    }
+
+    @Override
+    public Page<User> searchUsers(String query, Pageable pageable) {
+        return userRepository.searchUsers(query, pageable);
+    }
+
+    @Override
+    public Page<User> getUsersByCompanyPaginated(UUID companyId, Pageable pageable) {
+        return userRepository.findByCompanyId(companyId, pageable);
+    }
+
+    @Override
+    public Page<User> getUsersByRolePaginated(Integer roleId, Pageable pageable) {
+        return userRepository.findByRoleId(roleId, pageable);
+    }
+
+    // Estadísticas de usuarios
+    @Override
+    public Object getUserStats() {
+        Map<String, Object> stats = new HashMap<>();
+        
+        long totalUsers = userRepository.count();
+        long activeUsers = userRepository.countByActive(true);
+        long inactiveUsers = userRepository.countByActive(false);
+        
+        stats.put("totalUsers", totalUsers);
+        stats.put("activeUsers", activeUsers);
+        stats.put("inactiveUsers", inactiveUsers);
+        stats.put("verifiedUsers", "Not implemented yet"); // Would need additional column tracking
+        
+        // Role distribution
+        List<UserRole> roles = roleRepository.findAll();
+        Map<String, Long> roleDistribution = new HashMap<>();
+        for (UserRole role : roles) {
+            long count = userRepository.countByRoleId(role.getId());
+            roleDistribution.put(role.getName(), count);
+        }
+        stats.put("roleDistribution", roleDistribution);
+        
+        return stats;
+    }
+
+    // Gestión de estado del usuario
+    @Override
+    @Transactional
+    public User updateUserStatus(UUID id, Boolean active) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
+        
+        user.setActive(active);
+        return userRepository.save(user);
     }
 }
