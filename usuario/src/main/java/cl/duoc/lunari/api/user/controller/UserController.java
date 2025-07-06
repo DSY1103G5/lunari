@@ -17,6 +17,8 @@ import java.util.List;
 import cl.duoc.lunari.api.user.model.User;
 import cl.duoc.lunari.api.user.model.UserRole;
 import cl.duoc.lunari.api.user.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import cl.duoc.lunari.api.user.dto.UserRepresentation;
 import cl.duoc.lunari.api.user.dto.PagedUserRepresentation;
 import cl.duoc.lunari.api.user.dto.ApiRootDto;
@@ -28,15 +30,16 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 @RequestMapping("/api/v1/users")
+@Tag(name = "Usuarios", description = "Usuarios de LUNARi")
 public class UserController {
 
     private final UserService userService;
     private final UserModelAssembler userModelAssembler;
     private final PagedUserModelAssembler pagedUserModelAssembler;
 
-    public UserController(UserService userService, 
-                         UserModelAssembler userModelAssembler,
-                         PagedUserModelAssembler pagedUserModelAssembler) {
+    public UserController(UserService userService,
+            UserModelAssembler userModelAssembler,
+            PagedUserModelAssembler pagedUserModelAssembler) {
         this.userService = userService;
         this.userModelAssembler = userModelAssembler;
         this.pagedUserModelAssembler = pagedUserModelAssembler;
@@ -45,15 +48,17 @@ public class UserController {
     /**
      * Devuelve todos los usuarios con paginación y ordenamiento mejorado.
      * 
-     * @param page número de página (0-indexed, default: 0)
-     * @param size tamaño de página (default: 10)
-     * @param sort campo y dirección de ordenamiento (ej: firstName,asc o createdAt,desc)
-     * @param active filtro por estado activo (opcional)
-     * @param roleId filtro por rol (opcional)
+     * @param page      número de página (0-indexed, default: 0)
+     * @param size      tamaño de página (default: 10)
+     * @param sort      campo y dirección de ordenamiento (ej: firstName,asc o
+     *                  createdAt,desc)
+     * @param active    filtro por estado activo (opcional)
+     * @param roleId    filtro por rol (opcional)
      * @param companyId filtro por empresa (opcional)
      * @return Página de usuarios (HTTP 200)
      */
     @GetMapping("/paginated")
+    @Operation(summary = "Obtener usuarios paginados", description = "Obtiene todos los usuarios con paginación, ordenamiento y filtros")
     public ResponseEntity<ApiResponse<PagedUserRepresentation>> getUsersPaginated(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -65,20 +70,20 @@ public class UserController {
             // Parse sort parameter
             String[] sortParams = sort.split(",");
             String sortField = sortParams[0];
-            Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc") 
-                ? Sort.Direction.DESC 
-                : Sort.Direction.ASC;
-            
+            Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")
+                    ? Sort.Direction.DESC
+                    : Sort.Direction.ASC;
+
             Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
             Page<User> users = userService.getUsersPaginated(pageable, active, roleId, companyId);
-            
+
             PagedUserRepresentation pagedRepresentation = pagedUserModelAssembler.toModel(
-                users, active, roleId, companyId, sort);
-            
+                    users, active, roleId, companyId, sort);
+
             return ResponseEntity.ok(ApiResponse.success(pagedRepresentation));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener usuarios: " + e.getMessage(), 
+                    .body(ApiResponse.error("Error al obtener usuarios: " + e.getMessage(),
                             HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
@@ -89,7 +94,9 @@ public class UserController {
      * @return Lista de usuarios (HTTP 200)
      */
     @GetMapping
+    @Operation(summary = "Obtener todos los usuarios", description = "Obtiene todos los usuarios de LUNARi")
     public ResponseEntity<ApiResponse<CollectionModel<UserRepresentation>>> getAllUsers(Pageable pageable) {
+
         try {
             List<User> users = userService.getAllUsers(pageable);
             List<UserRepresentation> userRepresentations = users.stream()
@@ -120,6 +127,7 @@ public class UserController {
      * @return El usuario si se encuentra (HTTP 200), o HTTP 404 si no se encuentra.
      */
     @GetMapping("/{id}")
+    @Operation(summary = "Obtener usuario por ID", description = "Obtiene un usuario específico usando su ID único")
     public ResponseEntity<ApiResponse<UserRepresentation>> getUserById(@PathVariable UUID id) {
         Optional<User> userOptional = userService.getUserById(id);
         if (userOptional.isPresent()) {
@@ -138,6 +146,7 @@ public class UserController {
      * @return El usuario si se encuentra (HTTP 200), o HTTP 404 si no se encuentra.
      */
     @GetMapping("/email")
+    @Operation(summary = "Obtener usuario por email", description = "Obtiene un usuario específico usando su dirección de email")
     public ResponseEntity<ApiResponse<UserRepresentation>> getUserByEmail(@RequestParam String email) {
         // Sanitize email parameter
         if (email == null || email.isEmpty()) {
@@ -169,6 +178,7 @@ public class UserController {
      * @throws RuntimeException si el usuario ya existe (HTTP 409)
      */
     @PostMapping("/register")
+    @Operation(summary = "Registrar nuevo usuario", description = "Crea un nuevo usuario en el sistema LUNARi")
     public ResponseEntity<ApiResponse<UserRepresentation>> registerUser(@RequestBody User user) {
         try {
             User createdUser = userService.createUser(user);
@@ -183,7 +193,8 @@ public class UserController {
             }
             // Handle other database-related errors
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error("Erro al registrar usuario: " + e.getMessage(), HttpStatus.BAD_REQUEST.value()));
+                    .body(ApiResponse.error("Erro al registrar usuario: " + e.getMessage(),
+                            HttpStatus.BAD_REQUEST.value()));
         }
     }
 
@@ -197,7 +208,9 @@ public class UserController {
      *                          puede procesar (HTTP 400 o 422)
      */
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserRepresentation>> updateUser(@PathVariable UUID id, @RequestBody User userDetails) {
+    @Operation(summary = "Actualizar usuario", description = "Actualiza los datos de un usuario existente")
+    public ResponseEntity<ApiResponse<UserRepresentation>> updateUser(@PathVariable UUID id,
+            @RequestBody User userDetails) {
         try {
             User updatedUser = userService.updateUser(id, userDetails);
             UserRepresentation userRepresentation = userModelAssembler.toModel(updatedUser);
@@ -216,6 +229,7 @@ public class UserController {
      * @return HTTP 204 si se elimina correctamente, o HTTP 404 si no se encuentra.
      */
     @DeleteMapping("/{id}")
+    @Operation(summary = "Eliminar usuario", description = "Elimina un usuario del sistema usando su ID")
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
         try {
             userService.deleteUser(id);
@@ -231,11 +245,12 @@ public class UserController {
      * Buscar usuarios por nombre o apellido.
      * 
      * @param query término de búsqueda
-     * @param page número de página
-     * @param size tamaño de página
+     * @param page  número de página
+     * @param size  tamaño de página
      * @return usuarios que coinciden con la búsqueda
      */
     @GetMapping("/search")
+    @Operation(summary = "Buscar usuarios", description = "Busca usuarios por nombre o apellido con paginación")
     public ResponseEntity<ApiResponse<PagedUserRepresentation>> searchUsers(
             @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
@@ -243,20 +258,20 @@ public class UserController {
         try {
             if (query == null || query.trim().isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body(ApiResponse.error("El término de búsqueda no puede estar vacío", 
+                        .body(ApiResponse.error("El término de búsqueda no puede estar vacío",
                                 HttpStatus.BAD_REQUEST.value()));
             }
-            
+
             Pageable pageable = PageRequest.of(page, size, Sort.by("firstName").ascending());
             Page<User> users = userService.searchUsers(query.trim(), pageable);
-            
+
             PagedUserRepresentation pagedRepresentation = pagedUserModelAssembler.toModel(
-                users, null, null, null, "firstName,asc");
-            
+                    users, null, null, null, "firstName,asc");
+
             return ResponseEntity.ok(ApiResponse.success(pagedRepresentation));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al buscar usuarios: " + e.getMessage(), 
+                    .body(ApiResponse.error("Error al buscar usuarios: " + e.getMessage(),
                             HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
@@ -265,11 +280,12 @@ public class UserController {
      * Obtener usuarios por empresa.
      * 
      * @param companyId ID de la empresa
-     * @param page número de página
-     * @param size tamaño de página
+     * @param page      número de página
+     * @param size      tamaño de página
      * @return usuarios de la empresa especificada
      */
     @GetMapping("/company/{companyId}")
+    @Operation(summary = "Obtener usuarios por empresa", description = "Obtiene todos los usuarios pertenecientes a una empresa específica")
     public ResponseEntity<ApiResponse<PagedUserRepresentation>> getUsersByCompany(
             @PathVariable UUID companyId,
             @RequestParam(defaultValue = "0") int page,
@@ -277,14 +293,14 @@ public class UserController {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("firstName").ascending());
             Page<User> users = userService.getUsersByCompanyPaginated(companyId, pageable);
-            
+
             PagedUserRepresentation pagedRepresentation = pagedUserModelAssembler.toModel(
-                users, null, null, companyId, "firstName,asc");
-            
+                    users, null, null, companyId, "firstName,asc");
+
             return ResponseEntity.ok(ApiResponse.success(pagedRepresentation));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener usuarios de la empresa: " + e.getMessage(), 
+                    .body(ApiResponse.error("Error al obtener usuarios de la empresa: " + e.getMessage(),
                             HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
@@ -293,11 +309,12 @@ public class UserController {
      * Obtener usuarios por rol.
      * 
      * @param roleId ID del rol
-     * @param page número de página
-     * @param size tamaño de página
+     * @param page   número de página
+     * @param size   tamaño de página
      * @return usuarios con el rol especificado
      */
     @GetMapping("/role/{roleId}")
+    @Operation(summary = "Obtener usuarios por rol", description = "Obtiene todos los usuarios que tienen un rol específico")
     public ResponseEntity<ApiResponse<PagedUserRepresentation>> getUsersByRole(
             @PathVariable Integer roleId,
             @RequestParam(defaultValue = "0") int page,
@@ -305,14 +322,14 @@ public class UserController {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("firstName").ascending());
             Page<User> users = userService.getUsersByRolePaginated(roleId, pageable);
-            
+
             PagedUserRepresentation pagedRepresentation = pagedUserModelAssembler.toModel(
-                users, null, roleId, null, "firstName,asc");
-                
+                    users, null, roleId, null, "firstName,asc");
+
             return ResponseEntity.ok(ApiResponse.success(pagedRepresentation));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener usuarios por rol: " + e.getMessage(), 
+                    .body(ApiResponse.error("Error al obtener usuarios por rol: " + e.getMessage(),
                             HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
@@ -323,13 +340,14 @@ public class UserController {
      * @return estadísticas básicas de usuarios
      */
     @GetMapping("/stats")
+    @Operation(summary = "Obtener estadísticas de usuarios", description = "Obtiene estadísticas básicas y métricas de los usuarios del sistema")
     public ResponseEntity<ApiResponse<Object>> getUserStats() {
         try {
             Object stats = userService.getUserStats();
             return ResponseEntity.ok(ApiResponse.success(stats));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener estadísticas: " + e.getMessage(), 
+                    .body(ApiResponse.error("Error al obtener estadísticas: " + e.getMessage(),
                             HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
@@ -337,12 +355,14 @@ public class UserController {
     /**
      * Activar/desactivar usuario.
      * 
-     * @param id ID del usuario
+     * @param id     ID del usuario
      * @param active estado activo
      * @return usuario actualizado
      */
     @PatchMapping("/{id}/status")
-    public ResponseEntity<ApiResponse<UserRepresentation>> updateUserStatus(@PathVariable UUID id, @RequestParam Boolean active) {
+    @Operation(summary = "Actualizar estado de usuario", description = "Activa o desactiva un usuario en el sistema")
+    public ResponseEntity<ApiResponse<UserRepresentation>> updateUserStatus(@PathVariable UUID id,
+            @RequestParam Boolean active) {
         try {
             User updatedUser = userService.updateUserStatus(id, active);
             UserRepresentation userRepresentation = userModelAssembler.toModel(updatedUser);
@@ -356,12 +376,14 @@ public class UserController {
     /**
      * Cambiar contraseña del usuario.
      * 
-     * @param id ID del usuario
+     * @param id          ID del usuario
      * @param newPassword nueva contraseña
      * @return confirmación del cambio
      */
     @PatchMapping("/{id}/password")
-    public ResponseEntity<ApiResponse<Void>> updateUserPassword(@PathVariable UUID id, @RequestBody String newPassword) {
+    @Operation(summary = "Cambiar contraseña", description = "Actualiza la contraseña de un usuario específico")
+    public ResponseEntity<ApiResponse<Void>> updateUserPassword(@PathVariable UUID id,
+            @RequestBody String newPassword) {
         try {
             userService.updatePassword(id, newPassword);
             return ResponseEntity.ok(ApiResponse.success(null));
@@ -379,6 +401,7 @@ public class UserController {
      * @return confirmación de la asignación
      */
     @PatchMapping("/{userId}/role/{roleId}")
+    @Operation(summary = "Asignar rol a usuario", description = "Asigna un rol específico a un usuario")
     public ResponseEntity<ApiResponse<Void>> assignRoleToUser(@PathVariable UUID userId, @PathVariable Integer roleId) {
         try {
             userService.assignRoleToUser(userId, roleId);
@@ -392,12 +415,14 @@ public class UserController {
     /**
      * Asignar usuario a empresa.
      * 
-     * @param userId ID del usuario
+     * @param userId    ID del usuario
      * @param companyId ID de la empresa
      * @return confirmación de la asignación
      */
     @PatchMapping("/{userId}/company/{companyId}")
-    public ResponseEntity<ApiResponse<Void>> assignUserToCompany(@PathVariable UUID userId, @PathVariable UUID companyId) {
+    @Operation(summary = "Asignar usuario a empresa", description = "Asigna un usuario a una empresa específica")
+    public ResponseEntity<ApiResponse<Void>> assignUserToCompany(@PathVariable UUID userId,
+            @PathVariable UUID companyId) {
         try {
             userService.assignUserToCompany(userId, companyId);
             return ResponseEntity.ok(ApiResponse.success(null));
@@ -414,6 +439,7 @@ public class UserController {
      * @return confirmación de la verificación
      */
     @PostMapping("/verify")
+    @Operation(summary = "Verificar usuario", description = "Verifica un usuario usando un token de verificación")
     public ResponseEntity<ApiResponse<Void>> verifyUser(@RequestParam String token) {
         try {
             userService.verifyUser(token);
@@ -430,13 +456,14 @@ public class UserController {
      * @return lista de roles
      */
     @GetMapping("/roles")
+    @Operation(summary = "Obtener todos los roles", description = "Obtiene la lista completa de roles disponibles en el sistema")
     public ResponseEntity<ApiResponse<List<UserRole>>> getAllRoles() {
         try {
             List<UserRole> roles = userService.getAllRoles();
             return ResponseEntity.ok(ApiResponse.success(roles));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener roles: " + e.getMessage(), 
+                    .body(ApiResponse.error("Error al obtener roles: " + e.getMessage(),
                             HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
@@ -447,10 +474,11 @@ public class UserController {
      * @return Enlaces principales de la API de usuarios
      */
     @GetMapping("/api")
+    @Operation(summary = "Obtener enlaces de la API", description = "Proporciona los enlaces principales de navegación de la API de usuarios")
     public ResponseEntity<ApiResponse<ApiRootDto>> getApiRoot() {
         try {
             ApiRootDto apiRoot = new ApiRootDto();
-            
+
             // Set all the links
             apiRoot.getLinks().setGetAllUsers(linkTo(UserController.class).toString());
             apiRoot.getLinks().setGetPaginatedUsers(linkTo(methodOn(UserController.class)
@@ -467,11 +495,11 @@ public class UserController {
                     .getAllRoles()).toString());
             apiRoot.getLinks().setGetUserStats(linkTo(methodOn(UserController.class)
                     .getUserStats()).toString());
-            
+
             return ResponseEntity.ok(ApiResponse.success(apiRoot));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al obtener enlaces de la API: " + e.getMessage(), 
+                    .body(ApiResponse.error("Error al obtener enlaces de la API: " + e.getMessage(),
                             HttpStatus.INTERNAL_SERVER_ERROR.value()));
         }
     }
