@@ -9,7 +9,9 @@ import io.github.cdimascio.dotenv.Dotenv;
 public class LunariUserApiApplication {
 
 	public static void main(String[] args) {
-		Dotenv dotenv = Dotenv.configure().load();
+		// Load .env file only if it exists (for local development)
+		// In production, use environment variables or IAM roles instead
+		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
 		dotenv.entries().forEach(e -> System.setProperty(e.getKey(), e.getValue()));
 		SpringApplication.run(LunariUserApiApplication.class, args);
 	}

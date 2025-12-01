@@ -1,0 +1,5 @@
+# Python dependencies for data migration script
+
+psycopg2-binary==2.9.9
+boto3==1.34.70
+python-dotenv==1.0.1

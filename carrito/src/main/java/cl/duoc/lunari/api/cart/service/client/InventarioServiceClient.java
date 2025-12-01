@@ -1,9 +1,11 @@
 package cl.duoc.lunari.api.cart.service.client;
 
+import cl.duoc.lunari.api.cart.dto.StockReductionRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -102,13 +105,88 @@ public class InventarioServiceClient {
         try {
             ServicioAdicionalInfo servicioAdicional = obtenerServicioAdicional(servicioAdicionalId);
             return servicioAdicional != null && servicioAdicional.isDisponible();
-            
+
         } catch (Exception e) {
-            log.error("Error al verificar disponibilidad del servicio adicional {}: {}", 
+            log.error("Error al verificar disponibilidad del servicio adicional {}: {}",
                      servicioAdicionalId, e.getMessage());
             return false;
         }
-    }    /**
+    }
+
+    /**
+     * Reduce el stock de productos en el servicio de inventario
+     * Este método utiliza best-effort: si falla, registra el error pero no lanza excepción
+     *
+     * @param reductions Lista de reducciones de stock a aplicar
+     * @return true si la reducción fue exitosa, false si falló
+     */
+    public boolean reduceStock(List<StockReductionRequest.StockItem> reductions) {
+        try {
+            log.info("Reduciendo stock para {} productos", reductions.size());
+
+            String url = inventarioServiceUrl + "/api/v1/inventory/stock/reduce";
+
+            StockReductionRequest request = new StockReductionRequest();
+            request.setItems(reductions);
+
+            HttpEntity<StockReductionRequest> requestEntity = new HttpEntity<>(request);
+
+            ResponseEntity<ApiResponse<StockReductionResponse>> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                requestEntity,
+                new ParameterizedTypeReference<ApiResponse<StockReductionResponse>>() {}
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                log.info("Stock reducido exitosamente");
+                return true;
+            }
+
+            log.warn("La reducción de stock no fue exitosa: {}", response.getStatusCode());
+            return false;
+
+        } catch (Exception e) {
+            log.error("Error al reducir stock en servicio de inventario: {}", e.getMessage(), e);
+            // Best-effort: no lanzamos excepción, solo registramos el error
+            return false;
+        }
+    }
+
+    /**
+     * Verifica si hay stock suficiente para los productos especificados
+     *
+     * @param productoId ID del producto
+     * @param cantidad Cantidad requerida
+     * @return true si hay stock suficiente, false en caso contrario
+     */
+    public boolean checkStock(Long productoId, Integer cantidad) {
+        try {
+            log.debug("Verificando stock para producto {}, cantidad: {}", productoId, cantidad);
+
+            String url = inventarioServiceUrl + "/api/v1/inventory/stock/check/" + productoId + "/" + cantidad;
+
+            ResponseEntity<ApiResponse<Boolean>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<ApiResponse<Boolean>>() {}
+            );
+
+            if (response.getBody() != null && response.getBody().isSuccess()) {
+                return response.getBody().getResponse() != null && response.getBody().getResponse();
+            }
+
+            return false;
+
+        } catch (Exception e) {
+            log.warn("Error al verificar stock para producto {}: {}", productoId, e.getMessage());
+            // En caso de error, asumimos que no hay stock para evitar sobreventa
+            return false;
+        }
+    }
+
+    /**
      * DTO para información del servicio
      */
     public static class ServicioInfo {
@@ -339,6 +417,32 @@ public class InventarioServiceClient {
 
         public void setStatusCode(int statusCode) {
             this.statusCode = statusCode;
+        }
+    }
+
+    /**
+     * DTO para la respuesta de reducción de stock
+     */
+    public static class StockReductionResponse {
+        private int itemsProcessed;
+        private String message;
+
+        public StockReductionResponse() {}
+
+        public int getItemsProcessed() {
+            return itemsProcessed;
+        }
+
+        public void setItemsProcessed(int itemsProcessed) {
+            this.itemsProcessed = itemsProcessed;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
         }
     }
 }

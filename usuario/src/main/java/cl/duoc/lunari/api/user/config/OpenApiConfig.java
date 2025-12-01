@@ -34,8 +34,8 @@ public class OpenApiConfig {
 
         Info info = new Info()
                 .title("LUNARi User API")
-                .description("API for managing users in the LUNARi project")
-                .version("0.1.1")
+                .description("API for managing users in the LUNARi project (DynamoDB)")
+                .version("1.0.0")
                 .contact(contact)
                 .license(license);
 

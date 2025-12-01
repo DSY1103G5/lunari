@@ -1,105 +1,259 @@
 package cl.duoc.lunari.api.user.model;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Entity
-@Table(name = "Usuario")
+import java.util.List;
+
+/**
+ * Entidad User (Cliente) para DynamoDB.
+ *
+ * Representa un cliente en la plataforma e-commerce LUNARi con información completa
+ * de perfil personal, dirección, preferencias gaming, estadísticas y cupones.
+ *
+ * Tabla: lunari-users
+ * Primary Key: id (Partition Key) - ID numérico o UUID como String
+ * GSI #1: EmailIndex (email como PK) - Para autenticación
+ * GSI #2: UsernameIndex (username como PK) - Para búsqueda por username
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@DynamoDbBean
 public class User {
 
-    @Id
-    @GeneratedValue
-    @Column(name = "id_usuario")
-    @Schema(example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
-    private UUID id;
+    // ==================== Identificación ====================
 
-    @Column(name = "nombre_usuario", nullable = false)
-    @NotBlank(message = "Nombre no puede estar vacío")
-    @Schema(example = "Angelo")
-    private String firstName;
+    @Schema(example = "1")
+    private String id; // ID del usuario (puede ser numérico o UUID)
 
-    @Column(name = "apellido_usuario", nullable = false)
-    @NotBlank(message = "Apellido no puede estar vacío")
-    @Schema(example = "Millan")
-    private String lastName;
+    @NotBlank(message = "Username no puede estar vacío")
+    @Schema(example = "omunoz")
+    private String username; // Nombre de usuario único
 
-    @Column(nullable = false, unique = true)
     @Email
     @NotBlank(message = "Email no puede estar vacío")
-    @Schema(example = "ang.millan@duocuc.com")
+    @Schema(example = "osca.munozs@duocuc.cl")
     private String email;
 
-    @Column(name = "contrasena", nullable = false)
     @NotBlank(message = "Contraseña no puede estar vacía")
     @Size(min = 8, max = 64, message = "Contraseña debe tener entre 8 y 64 caracteres")
-    @Schema(example = "123456789")
+    @Schema(example = "hashedPassword123")
     private String password;
-    // descomentar esta validación si se necesita alguna vez
-    // @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,64}$", message = "Contraseña debe contener al menos una letra mayúscula, una letra minúscula, un número y un carácter especial")
 
-    @Column(name = "telefono")
-    @Schema(example = "+56900000000")
-    private String phone;
+    // ==================== Información del Cliente ====================
 
-    @Column(name = "imagen_perfil")
-    @Schema(example = "https://imagenes.ejemplo.com")
-    private String profileImage;
+    private Personal personal;              // Información personal (nombre, teléfono, bio, etc.)
+    private Address address;                // Dirección de envío
+    private ClientPreferences preferences;  // Preferencias de notificaciones y categorías
+    private Gaming gaming;                  // Perfil gaming del usuario
+    private ClientStats stats;              // Estadísticas (nivel, puntos, compras, etc.)
 
-    @Column(name = "id_rol", nullable = false)
-    @Schema(example = "1")
-    private Integer roleId;
+    // ==================== Cupones ====================
 
-    @Column(name = "id_empresa")
-    @Schema(example = "d290f1ee-6c54-4b01-90e6-d701748f0851")
-    private UUID companyId;
+    private List<Coupon> coupons;           // Cupones del cliente
 
-    @Column(name = "activo")
+    // ==================== Estado y Verificación ====================
+
     @Schema(example = "true")
-    private Boolean active = true;
+    private Boolean isActive = true;
 
-    @Column(name = "ultimo_login")
-    @Schema(example = "2025-07-04")
-    private OffsetDateTime lastLogin;
-
-    @Column(name = "verificado")
     @Schema(example = "true")
-    private Boolean verified = false;
+    private Boolean isVerified = false;
 
-    @Column(name = "token_verificacion")
-    @Schema(example = "abc123-verification-token")
-    private String verificationToken;
+    // ==================== Timestamps ====================
 
-    @Column(name = "token_expiracion")
-    @Schema(example = "2025-07-05")
-    private OffsetDateTime tokenExpiration;
+    @Schema(example = "2025-01-01T12:00:00Z")
+    private String createdAt; // ISO 8601 timestamp
 
-    @Column(name = "creado_el", updatable = false)
-    @Schema(example = "2025-07-01")
-    private OffsetDateTime createdAt;
+    @Schema(example = "2025-07-04T14:30:00Z")
+    private String updatedAt; // ISO 8601 timestamp
 
-    @Column(name = "actualizado_el")
-    @Schema(example = "2025-07-04")
-    private OffsetDateTime updatedAt;
+    // ==================== DynamoDB Annotations ====================
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = OffsetDateTime.now();
-        updatedAt = OffsetDateTime.now();
+    /**
+     * Primary Key (Partition Key) - id.
+     */
+    @DynamoDbPartitionKey
+    @DynamoDbAttribute("id")
+    public String getId() {
+        return id;
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    /**
+     * GSI #1: EmailIndex - Partition Key.
+     * Permite búsqueda rápida por email (autenticación).
+     */
+    @DynamoDbSecondaryPartitionKey(indexNames = "EmailIndex")
+    @DynamoDbAttribute("email")
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    /**
+     * GSI #2: UsernameIndex - Partition Key.
+     * Permite búsqueda rápida por username.
+     */
+    @DynamoDbSecondaryPartitionKey(indexNames = "UsernameIndex")
+    @DynamoDbAttribute("username")
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    // ==================== Getters y Setters con DynamoDbAttribute ====================
+
+    @DynamoDbAttribute("password")
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    @DynamoDbAttribute("personal")
+    public Personal getPersonal() {
+        return personal;
+    }
+
+    public void setPersonal(Personal personal) {
+        this.personal = personal;
+    }
+
+    @DynamoDbAttribute("address")
+    public Address getAddress() {
+        return address;
+    }
+
+    public void setAddress(Address address) {
+        this.address = address;
+    }
+
+    @DynamoDbAttribute("preferences")
+    public ClientPreferences getPreferences() {
+        return preferences;
+    }
+
+    public void setPreferences(ClientPreferences preferences) {
+        this.preferences = preferences;
+    }
+
+    @DynamoDbAttribute("gaming")
+    public Gaming getGaming() {
+        return gaming;
+    }
+
+    public void setGaming(Gaming gaming) {
+        this.gaming = gaming;
+    }
+
+    @DynamoDbAttribute("stats")
+    public ClientStats getStats() {
+        return stats;
+    }
+
+    public void setStats(ClientStats stats) {
+        this.stats = stats;
+    }
+
+    @DynamoDbAttribute("coupons")
+    public List<Coupon> getCoupons() {
+        return coupons;
+    }
+
+    public void setCoupons(List<Coupon> coupons) {
+        this.coupons = coupons;
+    }
+
+    @DynamoDbAttribute("isActive")
+    public Boolean getIsActive() {
+        return isActive;
+    }
+
+    public void setIsActive(Boolean isActive) {
+        this.isActive = isActive;
+    }
+
+    @DynamoDbAttribute("isVerified")
+    public Boolean getIsVerified() {
+        return isVerified;
+    }
+
+    public void setIsVerified(Boolean isVerified) {
+        this.isVerified = isVerified;
+    }
+
+    @DynamoDbAttribute("createdAt")
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    @DynamoDbAttribute("updatedAt")
+    public String getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    // ==================== Helper Methods ====================
+
+    /**
+     * Obtiene el nombre completo del cliente.
+     *
+     * @return firstName + lastName del objeto personal
+     */
+    public String getFullName() {
+        return personal != null ? personal.getFullName() : "";
+    }
+
+    /**
+     * Verifica si el cliente está activo y verificado.
+     *
+     * @return true si está activo Y verificado
+     */
+    public boolean isActiveAndVerified() {
+        return Boolean.TRUE.equals(isActive) && Boolean.TRUE.equals(isVerified);
+    }
+
+    /**
+     * Obtiene el nivel del cliente desde las estadísticas.
+     *
+     * @return Nivel del cliente (Bronze, Silver, Gold, etc.)
+     */
+    public String getLevel() {
+        return stats != null ? stats.getLevel() : "Bronze";
+    }
+
+    /**
+     * Obtiene los puntos del cliente desde las estadísticas.
+     *
+     * @return Puntos de fidelidad
+     */
+    public Long getPoints() {
+        return stats != null ? stats.getPoints() : 0L;
     }
 }

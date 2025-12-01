@@ -9,7 +9,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 public class LunariInventoryApiApplication {
 
 	public static void main(String[] args) {
-		Dotenv dotenv = Dotenv.configure().load();
+		Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
 		dotenv.entries().forEach(e -> System.setProperty(e.getKey(), e.getValue()));
 		SpringApplication.run(LunariInventoryApiApplication.class, args);
 	}

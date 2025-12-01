@@ -9,8 +9,12 @@ import io.github.cdimascio.dotenv.Dotenv;
 public class LunariCartApiApplication {
 
 	public static void main(String[] args) {
-		Dotenv dotenv = Dotenv.configure().load();
-		dotenv.entries().forEach(e -> System.setProperty(e.getKey(), e.getValue()));
+		try {
+			Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+			dotenv.entries().forEach(e -> System.setProperty(e.getKey(), e.getValue()));
+		} catch (Exception e) {
+			System.out.println("No .env file found, using application properties");
+		}
 		SpringApplication.run(LunariCartApiApplication.class, args);
 	}
 

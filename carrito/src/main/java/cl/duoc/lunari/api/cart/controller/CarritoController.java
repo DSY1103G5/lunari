@@ -44,15 +44,14 @@ public class CarritoController {
      */
     @GetMapping("/{carritoId}")
     public ResponseEntity<ApiResponse<CarritoResponseDto>> obtenerCarritoPorId(@PathVariable UUID carritoId) {
-        Optional<Carrito> carritoOpt = carritoService.obtenerCarritoPorId(carritoId);
-        
-        if (carritoOpt.isPresent()) {
-            CarritoResponseDto response = CarritoResponseDto.fromEntity(carritoOpt.get());
+        try {
+            Carrito carrito = carritoService.obtenerCarritoPorId(carritoId);
+            CarritoResponseDto response = CarritoResponseDto.fromEntity(carrito);
             return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Carrito no encontrado", HttpStatus.NOT_FOUND.value()));
         }
-        
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error("Carrito no encontrado", HttpStatus.NOT_FOUND.value()));
     }
 
     /**

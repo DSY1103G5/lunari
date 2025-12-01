@@ -18,13 +18,21 @@ public class OpenApiConfig {
     private String serverPort;
 
     @Bean
-    public OpenAPI lunariUserOpenAPI() {
+    public OpenAPI lunariCartOpenAPI() {
         Server localServer = new Server()
                 .url("http://localhost:" + serverPort)
                 .description("Local Development Server");
 
+        Server devServer = new Server()
+                .url("https://dev-api.lunari.cl/cart")
+                .description("Development Server");
+
+        Server prodServer = new Server()
+                .url("https://api.lunari.cl/cart")
+                .description("Production Server");
+
         Contact contact = new Contact()
-                .name("LUNARi")
+                .name("LUNARi Team")
                 .email("osca.munozs@duocuc.cl")
                 .url("https://github.com/dsy1103g5/lunari");
 
@@ -33,14 +41,36 @@ public class OpenApiConfig {
                 .url("https://opensource.org/licenses/MIT");
 
         Info info = new Info()
-                .title("LUNARi User API")
-                .description("API for managing users in the LUNARi project")
-                .version("0.0.1")
+                .title("LUNARi Cart & Checkout API")
+                .description("""
+                    API REST para gestión de carritos de compra, pedidos y procesamiento de pagos.
+
+                    ## Características principales:
+                    - **Gestión de Carritos**: Crear y administrar carritos de compra
+                    - **Proceso de Checkout**: Flujo completo de pago con Transbank WebPay Plus
+                    - **Gestión de Pedidos**: Seguimiento de pedidos y estados
+                    - **Consultas de Pagos**: Verificación de estado de transacciones
+
+                    ## Flujo de Checkout:
+                    1. Usuario agrega items al carrito (/api/v1/cart)
+                    2. Inicia checkout (/api/v1/checkout/initiate)
+                    3. Redirección a Transbank para pago
+                    4. Confirmación de pago (/api/v1/checkout/confirm)
+                    5. Procesamiento asíncrono (reducción stock, asignación puntos)
+
+                    ## Integración:
+                    - **Inventario Service**: Sincronización de stock de productos
+                    - **Usuario Service**: Sistema de puntos de lealtad
+                    - **Transbank**: Procesamiento de pagos WebPay Plus
+
+                    ## Versión: 1.0.0
+                    """)
+                .version("1.0.0")
                 .contact(contact)
                 .license(license);
 
         return new OpenAPI()
                 .info(info)
-                .servers(List.of(localServer));
+                .servers(List.of(localServer, devServer, prodServer));
     }
 }

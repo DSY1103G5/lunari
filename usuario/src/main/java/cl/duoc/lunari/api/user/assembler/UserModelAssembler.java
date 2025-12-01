@@ -11,6 +11,21 @@ import org.springframework.stereotype.Component;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
+/**
+ * Assembler para convertir entidades User (clientes) a UserRepresentation con HATEOAS links.
+ *
+ * Enlaces enfocados en e-commerce:
+ * - Gestión de perfil del cliente
+ * - Cupones
+ * - Preferencias y dirección
+ * - Perfil gaming
+ * - Estadísticas
+ *
+ * Removido:
+ * - Enlaces de roles (los clientes no tienen roles)
+ * - Enlaces de administración
+ * - Enlaces de metadata
+ */
 @Component
 public class UserModelAssembler extends RepresentationModelAssemblerSupport<User, UserRepresentation> {
 
@@ -25,25 +40,29 @@ public class UserModelAssembler extends RepresentationModelAssemblerSupport<User
     @NonNull
     public UserRepresentation toModel(@NonNull User user) {
         UserRepresentation userRepresentation = userMapper.toRepresentation(user);
-        
-        // Self link
+
+        // Self link - Perfil del cliente
         userRepresentation.add(linkTo(methodOn(UserController.class)
                 .getUserById(user.getId())).withSelfRel());
-        
-        // Collection link
-        userRepresentation.add(linkTo(UserController.class).withRel("users"));
-        
-        // Update link
+
+        // Collection link - Todos los clientes
+        userRepresentation.add(linkTo(UserController.class).withRel("clients"));
+
+        // Update link - Actualizar perfil
         userRepresentation.add(linkTo(methodOn(UserController.class)
                 .updateUser(user.getId(), null)).withRel("update"));
-        
-        // Delete link
+
+        // Delete link - Eliminar cuenta
         userRepresentation.add(linkTo(methodOn(UserController.class)
                 .deleteUser(user.getId())).withRel("delete"));
-        
-        // Status management links
-        if (user.getActive() != null) {
-            if (user.getActive()) {
+
+        // Password change link - Cambiar contraseña
+        userRepresentation.add(linkTo(methodOn(UserController.class)
+                .updateUserPassword(user.getId(), null)).withRel("change-password"));
+
+        // Status management links - Activar/Desactivar cuenta
+        if (user.getIsActive() != null) {
+            if (user.getIsActive()) {
                 userRepresentation.add(linkTo(methodOn(UserController.class)
                         .updateUserStatus(user.getId(), false)).withRel("deactivate"));
             } else {
@@ -51,31 +70,48 @@ public class UserModelAssembler extends RepresentationModelAssemblerSupport<User
                         .updateUserStatus(user.getId(), true)).withRel("activate"));
             }
         }
-        
-        // Password change link
+
+        // Gamification links - Puntos de fidelidad
         userRepresentation.add(linkTo(methodOn(UserController.class)
-                .updateUserPassword(user.getId(), null)).withRel("change-password"));
-        
-        // Company-related links
-        if (user.getCompanyId() != null) {
-            userRepresentation.add(linkTo(methodOn(UserController.class)
-                    .getUsersByCompany(user.getCompanyId(), 0, 10)).withRel("company-users"));
+                .addPoints(user.getId(), null)).withRel("add-points"));
+
+        // Favorites link - Favoritos (contador)
+        userRepresentation.add(linkTo(methodOn(UserController.class)
+                .addFavorite(user.getId(), null)).withRel("add-favorite"));
+
+        // Purchase tracking link - Registrar compra
+        userRepresentation.add(linkTo(methodOn(UserController.class)
+                .recordPurchase(user.getId(), null)).withRel("record-purchase"));
+
+        // Review tracking link - Registrar reseña
+        userRepresentation.add(linkTo(methodOn(UserController.class)
+                .recordReview(user.getId(), null)).withRel("record-review"));
+
+        // Address link - Actualizar dirección
+        userRepresentation.add(linkTo(methodOn(UserController.class)
+                .updateAddress(user.getId(), null)).withRel("update-address"));
+
+        // E-commerce specific links - Enlaces de e-commerce
+
+        // Cupones - Solo si el cliente tiene cupones o puede recibir más
+        if (user.getCoupons() != null && !user.getCoupons().isEmpty()) {
+            // Link to view coupons (futuro endpoint)
+            // userRepresentation.add(linkTo(methodOn(UserController.class)
+            //         .getClientCoupons(user.getId())).withRel("coupons"));
         }
-        
-        // Role-related links
-        if (user.getRoleId() != null) {
-            userRepresentation.add(linkTo(methodOn(UserController.class)
-                    .getUsersByRole(user.getRoleId(), 0, 10)).withRel("role-users"));
-            userRepresentation.add(linkTo(methodOn(UserController.class)
-                    .assignRoleToUser(user.getId(), null)).withRel("assign-role"));
-        }
-        
-        // Verification link (if not verified)
-        if (user.getVerified() != null && !user.getVerified()) {
-            userRepresentation.add(linkTo(methodOn(UserController.class)
-                    .verifyUser(null)).withRel("verify"));
-        }
-        
+
+        // Gaming profile - Perfil gaming
+        // userRepresentation.add(linkTo(methodOn(UserController.class)
+        //         .updateGamingProfile(user.getId(), null)).withRel("update-gaming"));
+
+        // Preferences - Preferencias de cliente
+        // userRepresentation.add(linkTo(methodOn(UserController.class)
+        //         .updateClientPreferences(user.getId(), null)).withRel("update-preferences"));
+
+        // Stats - Estadísticas del cliente
+        // userRepresentation.add(linkTo(methodOn(UserController.class)
+        //         .getClientStats(user.getId())).withRel("stats"));
+
         return userRepresentation;
     }
 }
