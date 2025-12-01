@@ -17,9 +17,8 @@ import java.util.Set;
 public class Categoria {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_categoria")
-    private Integer idCategoria;
+    @Column(name = "id_categoria", length = 10)
+    private String idCategoria;
 
     @Column(name = "nombre_categoria", unique = true, nullable = false, length = 100)
     private String nombreCategoria;
@@ -35,7 +34,7 @@ public class Categoria {
 
     @OneToMany(mappedBy = "categoria", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
-    private Set<Catalogo> servicios;
+    private Set<Producto> productos;
 
     @PrePersist
     protected void onCreate() {

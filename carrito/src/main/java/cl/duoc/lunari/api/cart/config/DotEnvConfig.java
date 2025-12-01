@@ -7,15 +7,20 @@ import jakarta.annotation.PostConstruct;
 
 @Configuration
 public class DotEnvConfig {
-    
+
     @PostConstruct
     public void init() {
-        try {
-            Dotenv dotenv = Dotenv.configure().load();
-            dotenv.entries().forEach(e -> 
-                System.setProperty(e.getKey(), e.getValue()));
-        } catch (Exception e) {
-            System.out.println("No .env file found or error loading environment variables");
-        }
+        // Load .env file if present (local development)
+        // Ignore if missing (EC2 deployment with environment variables)
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+
+        // Set environment variables as system properties
+        dotenv.entries().forEach(e ->
+            System.setProperty(e.getKey(), e.getValue())
+        );
+
+        System.out.println("Environment configuration loaded successfully");
     }
 }

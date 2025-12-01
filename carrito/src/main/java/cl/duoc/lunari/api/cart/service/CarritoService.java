@@ -1,5 +1,6 @@
 package cl.duoc.lunari.api.cart.service;
 
+import cl.duoc.lunari.api.cart.exception.CarritoNotFoundException;
 import cl.duoc.lunari.api.cart.model.Carrito;
 import cl.duoc.lunari.api.cart.model.CarritoItem;
 import cl.duoc.lunari.api.cart.model.CarritoServicioAdicional;
@@ -246,10 +247,12 @@ public class CarritoService {
 
     /**
      * Obtiene un carrito por ID
+     * Lanza excepción si no existe
      */
     @Transactional(readOnly = true)
-    public Optional<Carrito> obtenerCarritoPorId(UUID carritoId) {
-        return carritoRepository.findById(carritoId);
+    public Carrito obtenerCarritoPorId(UUID carritoId) {
+        return carritoRepository.findById(carritoId)
+                .orElseThrow(() -> new CarritoNotFoundException(carritoId));
     }
 
     /**
@@ -266,8 +269,7 @@ public class CarritoService {
     public Carrito procesarCarrito(UUID carritoId) {
         log.info("Procesando carrito: {}", carritoId);
 
-        Carrito carrito = carritoRepository.findById(carritoId)
-                .orElseThrow(() -> new RuntimeException("Carrito no encontrado: " + carritoId));
+        Carrito carrito = obtenerCarritoPorId(carritoId);
 
         if (carrito.getEstado() != EstadoCarrito.ACTIVO) {
             throw new RuntimeException("Solo se pueden procesar carritos activos");
@@ -278,6 +280,30 @@ public class CarritoService {
         }
 
         carrito.setEstado(EstadoCarrito.PROCESADO);
+        return carritoRepository.save(carrito);
+    }
+
+    /**
+     * Marca un carrito como procesado y lo vincula al pedido generado
+     * Este método es llamado después de crear un pedido exitosamente
+     *
+     * @param carritoId ID del carrito a marcar como procesado
+     * @param numeroOrden Número del pedido generado
+     * @return Carrito actualizado
+     */
+    public Carrito markCartProcessed(UUID carritoId, String numeroOrden) {
+        log.info("Marcando carrito {} como procesado con orden {}", carritoId, numeroOrden);
+
+        Carrito carrito = obtenerCarritoPorId(carritoId);
+
+        if (carrito.getEstado() != EstadoCarrito.ACTIVO) {
+            log.warn("Intentando marcar como procesado un carrito que no está activo: estado={}",
+                    carrito.getEstado());
+        }
+
+        carrito.setEstado(EstadoCarrito.PROCESADO);
+        carrito.setNumeroOrden(numeroOrden);
+
         return carritoRepository.save(carrito);
     }
 

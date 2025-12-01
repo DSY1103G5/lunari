@@ -18,7 +18,7 @@ public class OpenApiConfig {
     private String serverPort;
 
     @Bean
-    public OpenAPI lunariUserOpenAPI() {
+    public OpenAPI lunariInventoryOpenAPI() {
         Server localServer = new Server()
                 .url("http://localhost:" + serverPort)
                 .description("Local Development Server");
@@ -33,8 +33,8 @@ public class OpenApiConfig {
                 .url("https://opensource.org/licenses/MIT");
 
         Info info = new Info()
-                .title("LUNARi User API")
-                .description("API for managing users in the LUNARi project")
+                .title("LUNARi Inventory API")
+                .description("API for managing gaming products catalog in the LUNARi project")
                 .version("0.0.1")
                 .contact(contact)
                 .license(license);

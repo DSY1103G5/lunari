@@ -47,6 +47,9 @@ public class Carrito {
     @Column(name = "actualizado_el")
     private OffsetDateTime actualizadoEl;
 
+    @Column(name = "numero_orden", length = 50)
+    private String numeroOrden;
+
     @OneToMany(mappedBy = "carrito", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<CarritoItem> items;
 
