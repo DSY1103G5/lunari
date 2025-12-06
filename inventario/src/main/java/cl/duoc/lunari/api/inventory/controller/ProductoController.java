@@ -2,6 +2,8 @@ package cl.duoc.lunari.api.inventory.controller;
 
 import cl.duoc.lunari.api.inventory.model.Producto;
 import cl.duoc.lunari.api.inventory.service.ProductoService;
+import cl.duoc.lunari.api.inventory.security.ApiKeyType;
+import cl.duoc.lunari.api.inventory.security.RequireApiKey;
 import cl.duoc.lunari.api.payload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -116,6 +118,7 @@ public class ProductoController {
 
     @PostMapping
     @Operation(summary = "Crear nuevo producto")
+    @RequireApiKey(ApiKeyType.ADMIN)
     public ResponseEntity<ApiResponse<Producto>> createProducto(@RequestBody Producto producto) {
         try {
             Producto nuevoProducto = productoService.save(producto);
@@ -129,6 +132,7 @@ public class ProductoController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Actualizar producto")
+    @RequireApiKey(ApiKeyType.ADMIN)
     public ResponseEntity<ApiResponse<Producto>> updateProducto(
             @PathVariable Integer id,
             @RequestBody Producto producto) {
@@ -149,6 +153,7 @@ public class ProductoController {
 
     @PatchMapping("/{id}/activar")
     @Operation(summary = "Activar producto")
+    @RequireApiKey(ApiKeyType.ADMIN)
     public ResponseEntity<ApiResponse<Producto>> activarProducto(@PathVariable Integer id) {
         try {
             Producto producto = productoService.activar(id);
@@ -161,6 +166,7 @@ public class ProductoController {
 
     @PatchMapping("/{id}/desactivar")
     @Operation(summary = "Desactivar producto")
+    @RequireApiKey(ApiKeyType.ADMIN)
     public ResponseEntity<ApiResponse<Producto>> desactivarProducto(@PathVariable Integer id) {
         try {
             Producto producto = productoService.desactivar(id);
@@ -173,6 +179,7 @@ public class ProductoController {
 
     @PatchMapping("/{id}/stock")
     @Operation(summary = "Actualizar stock del producto")
+    @RequireApiKey(ApiKeyType.ADMIN)
     public ResponseEntity<ApiResponse<Producto>> actualizarStock(
             @PathVariable Integer id,
             @RequestParam Integer stock) {
@@ -185,8 +192,24 @@ public class ProductoController {
         }
     }
 
+    @PatchMapping("/{id}/reducir-stock")
+    @Operation(summary = "Reducir stock del producto")
+    @RequireApiKey(ApiKeyType.SERVICE)
+    public ResponseEntity<ApiResponse<Producto>> reducirStock(
+            @PathVariable Integer id,
+            @RequestParam Integer cantidad) {
+        try {
+            Producto producto = productoService.reducirStock(id, cantidad);
+            return ResponseEntity.ok(ApiResponse.success(producto));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage(), HttpStatus.BAD_REQUEST.value()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Eliminar producto")
+    @RequireApiKey(ApiKeyType.ADMIN)
     public ResponseEntity<ApiResponse<Void>> deleteProducto(@PathVariable Integer id) {
         try {
             productoService.deleteById(id);

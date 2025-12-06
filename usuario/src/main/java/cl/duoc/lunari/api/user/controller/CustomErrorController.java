@@ -34,11 +34,13 @@ public class CustomErrorController implements ErrorController {
                 ? HttpStatus.valueOf(Integer.parseInt(statusCode.toString()))
                 : HttpStatus.INTERNAL_SERVER_ERROR;
 
-        return new ResponseEntity<>(Map.of(
-                "status", status.value(),
-                "error", status.getReasonPhrase(),
-                "message", errorDetails.get("message"),
-                "path", errorDetails.get("path")
-        ), status);
+        // Use HashMap to allow null values
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("status", status.value());
+        response.put("error", status.getReasonPhrase());
+        response.put("message", errorDetails.getOrDefault("message", "An error occurred"));
+        response.put("path", errorDetails.getOrDefault("path", request.getRequestURI()));
+
+        return new ResponseEntity<>(response, status);
     }
 }

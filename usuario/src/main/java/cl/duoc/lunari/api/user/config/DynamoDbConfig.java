@@ -58,6 +58,7 @@ public class DynamoDbConfig {
 
         // Configuración para DynamoDB Local (desarrollo y testing)
         if (!dynamoDbEndpoint.isEmpty()) {
+            System.out.println("🔧 Using DynamoDB Local at: " + dynamoDbEndpoint);
             builder.endpointOverride(URI.create(dynamoDbEndpoint));
 
             // DynamoDB Local requiere credenciales (pueden ser ficticias)
@@ -68,6 +69,14 @@ public class DynamoDbConfig {
                 );
                 builder.credentialsProvider(StaticCredentialsProvider.create(credentials));
             }
+        } else {
+            // Production: Use AWS default credentials chain
+            // This automatically uses ~/.aws/credentials or EC2 instance profile
+            System.out.println("🔧 Using AWS DynamoDB with default credentials chain (region: " + awsRegion + ")");
+            // Don't set credentials - let AWS SDK find them automatically from:
+            // 1. ~/.aws/credentials
+            // 2. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)
+            // 3. EC2 instance profile
         }
 
         return builder.build();

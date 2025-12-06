@@ -1,0 +1,26 @@
+#!/bin/bash
+# LUNARi Carrito Service - Environment Variables Example
+# Copy this file to lunari-cart-env.sh and update with your values
+
+# Database Configuration
+export DB_HOST="your-db-host.neon.tech"
+export DB_PORT="5432"
+export DB_NAME="lunari_cart_db"
+export DB_USER="your_db_user"
+export DB_PASSWORD="your_secure_password"
+
+# Microservices URLs
+# Use EC2 public DNS, Elastic IPs, or domain names
+export USUARIO_SERVICE_URL="http://ec2-52-23-45-67.compute-1.amazonaws.com:8081"
+export INVENTARIO_SERVICE_URL="http://ec2-54-89-12-34.compute-1.amazonaws.com:8082"
+
+# Transbank Configuration
+# For TEST environment:
+export TRANSBANK_API_KEY="597055555532"
+export TRANSBANK_COMMERCE_CODE="597055555532"
+export TRANSBANK_ENVIRONMENT="TEST"
+
+# For PRODUCTION environment:
+# export TRANSBANK_API_KEY="your_production_api_key"
+# export TRANSBANK_COMMERCE_CODE="your_production_commerce_code"
+# export TRANSBANK_ENVIRONMENT="PROD"

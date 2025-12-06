@@ -23,18 +23,18 @@ if [ -z "$EC2_HOST" ]; then
 fi
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  LUNARi User Service - EC2 Deployment${NC}"
+echo -e "${GREEN}  LUNARi Inventory Service - EC2 Deployment${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 echo -e "${YELLOW}Target:${NC} $EC2_HOST"
 echo -e "${YELLOW}SSH Key:${NC} $SSH_KEY\n"
 
 # Check if JAR exists
-JAR_PATH="../target/lunari-user-api-0.0.1-SNAPSHOT.jar"
+JAR_PATH="../target/lunari-inventory-api-0.0.1-SNAPSHOT.jar"
 if [ ! -f "$JAR_PATH" ]; then
     echo -e "${RED}ERROR: JAR file not found at $JAR_PATH${NC}"
     echo -e "${YELLOW}Build the JAR first:${NC}"
-    echo "  cd ../usuario"
+    echo "  cd ../inventario"
     echo "  ./mvnw clean package -Dmaven.test.skip=true"
     exit 1
 fi
@@ -83,7 +83,7 @@ echo -e "${YELLOW}Step 5/5:${NC} Waiting for startup (10 seconds)..."
 sleep 10
 
 echo -e "\n${YELLOW}Checking application status...${NC}"
-if ssh -o ConnectTimeout=10 -i "$SSH_KEY" "$EC2_HOST" "curl -s -f http://localhost:8080/swagger-ui/index.html > /dev/null 2>&1"; then
+if ssh -o ConnectTimeout=10 -i "$SSH_KEY" "$EC2_HOST" "curl -s -f http://localhost:8082/swagger-ui/index.html > /dev/null 2>&1"; then
     echo -e "${GREEN}✓ Application is running!${NC}\n"
 
     # Extract hostname from EC2_HOST
@@ -94,15 +94,9 @@ if ssh -o ConnectTimeout=10 -i "$SSH_KEY" "$EC2_HOST" "curl -s -f http://localho
     echo -e "${GREEN}========================================${NC}\n"
 
     echo -e "${YELLOW}API Endpoints:${NC}"
-    echo "  http://$HOSTNAME:8080/api/v1/auth/register"
-    echo "  http://$HOSTNAME:8080/api/v1/auth/login"
-    echo "  http://$HOSTNAME:8080/swagger-ui/index.html"
-    echo ""
-
-    echo -e "${YELLOW}Test Registration:${NC}"
-    echo "  curl -X POST http://$HOSTNAME:8080/api/v1/auth/register \\"
-    echo "    -H 'Content-Type: application/json' \\"
-    echo "    -d '{\"username\":\"testuser\",\"email\":\"test@example.com\",\"password\":\"password123\"}'"
+    echo "  http://$HOSTNAME:8082/api/v1/productos"
+    echo "  http://$HOSTNAME:8082/api/v1/categorias"
+    echo "  http://$HOSTNAME:8082/swagger-ui/index.html"
     echo ""
 
     echo -e "${YELLOW}View Logs:${NC}"
