@@ -23,23 +23,23 @@ if [ -z "$EC2_HOST" ]; then
 fi
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  LUNARi User Service - EC2 Deployment${NC}"
+echo -e "${GREEN}  LUNARi Carrito Service - EC2 Deployment${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 echo -e "${YELLOW}Target:${NC} $EC2_HOST"
 echo -e "${YELLOW}SSH Key:${NC} $SSH_KEY\n"
 
 # Check if JAR exists
-JAR_PATH="../target/lunari-user-api-0.0.1-SNAPSHOT.jar"
+JAR_PATH="../target/lunari-cart-api-0.0.1-SNAPSHOT.jar"
 if [ ! -f "$JAR_PATH" ]; then
     echo -e "${RED}ERROR: JAR file not found at $JAR_PATH${NC}"
     echo -e "${YELLOW}Build the JAR first:${NC}"
-    echo "  cd ../usuario"
-    echo "  ./mvnw clean package -Dmaven.test.skip=true"
+    echo "  cd .."
+    echo "  mvn clean package -DskipTests"
     exit 1
 fi
 
-echo -e "${YELLOW}Step 1/5:${NC} Uploading JAR to EC2..."
+echo -e "${YELLOW}Step 1/6:${NC} Uploading JAR to EC2..."
 scp -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i "$SSH_KEY" "$JAR_PATH" "$EC2_HOST:~/app.jar" || {
     echo -e "${RED}✗ Failed to upload JAR to EC2${NC}"
     echo -e "${YELLOW}Check:${NC}"
@@ -51,39 +51,55 @@ scp -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i "$SSH_KEY" "$JAR_PATH" "
 }
 echo -e "${GREEN}✓ JAR uploaded${NC}\n"
 
-echo -e "${YELLOW}Step 2/5:${NC} Uploading AWS credentials to EC2..."
-# Copy AWS credentials from local machine to EC2
-if [ -f "$HOME/.aws/credentials" ]; then
-    ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i "$SSH_KEY" "$EC2_HOST" "mkdir -p ~/.aws" || true
-    scp -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i "$SSH_KEY" "$HOME/.aws/credentials" "$EC2_HOST:~/.aws/credentials" || {
-        echo -e "${YELLOW}⚠ Could not upload AWS credentials${NC}"
-    }
-    echo -e "${GREEN}✓ AWS credentials uploaded${NC}\n"
-else
-    echo -e "${RED}✗ AWS credentials not found at ~/.aws/credentials${NC}"
-    echo -e "${YELLOW}Run 'aws configure' first or get credentials from AWS Academy${NC}\n"
+echo -e "${YELLOW}Step 2/6:${NC} Uploading environment variables script..."
+# Check if env vars script exists
+ENV_SCRIPT="./lunari-cart-env.sh"
+if [ ! -f "$ENV_SCRIPT" ]; then
+    echo -e "${RED}ERROR: Environment variables script not found at $ENV_SCRIPT${NC}"
+    echo -e "${YELLOW}Create it first:${NC}"
+    echo "  ./create-env-script.sh"
     exit 1
 fi
 
-echo -e "${YELLOW}Step 3/5:${NC} Stopping old application..."
+scp -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i "$SSH_KEY" "$ENV_SCRIPT" "$EC2_HOST:~/lunari-cart-env.sh" || {
+    echo -e "${RED}✗ Failed to upload environment script${NC}"
+    exit 1
+}
+echo -e "${GREEN}✓ Environment script uploaded${NC}\n"
+
+echo -e "${YELLOW}Step 3/6:${NC} Installing environment variables on EC2..."
+ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i "$SSH_KEY" "$EC2_HOST" 'sudo mv ~/lunari-cart-env.sh /etc/profile.d/lunari-cart-env.sh && sudo chmod 644 /etc/profile.d/lunari-cart-env.sh' || {
+    echo -e "${RED}✗ Failed to install environment script${NC}"
+    exit 1
+}
+echo -e "${GREEN}✓ Environment variables installed in /etc/profile.d/${NC}\n"
+
+echo -e "${YELLOW}Step 4/6:${NC} Stopping old application..."
 ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i "$SSH_KEY" "$EC2_HOST" "pkill -f 'java -jar' || true" || {
     echo -e "${YELLOW}⚠ Could not connect or no old app was running${NC}"
 }
 echo -e "${GREEN}✓ Old app stopped (if it was running)${NC}\n"
 
-echo -e "${YELLOW}Step 4/5:${NC} Starting application with prod profile..."
-ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i "$SSH_KEY" "$EC2_HOST" 'bash -c "nohup java -jar app.jar --spring.profiles.active=prod > app.log 2>&1 < /dev/null &"' || {
+echo -e "${YELLOW}Step 5/6:${NC} Starting application with prod profile..."
+ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i "$SSH_KEY" "$EC2_HOST" 'bash -s' << 'ENDSSH'
+source /etc/profile.d/lunari-cart-env.sh
+nohup java -jar app.jar --spring.profiles.active=prod > app.log 2>&1 < /dev/null &
+disown
+exit 0
+ENDSSH
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✓ Application started${NC}\n"
+else
     echo -e "${RED}✗ Failed to start application${NC}"
     exit 1
-}
-sleep 1
-echo -e "${GREEN}✓ Application started${NC}\n"
+fi
 
-echo -e "${YELLOW}Step 5/5:${NC} Waiting for startup (10 seconds)..."
-sleep 10
+echo -e "${YELLOW}Step 6/6:${NC} Waiting for startup (15 seconds)..."
+sleep 15
 
 echo -e "\n${YELLOW}Checking application status...${NC}"
-if ssh -o ConnectTimeout=10 -i "$SSH_KEY" "$EC2_HOST" "curl -s -f http://localhost:8080/swagger-ui/index.html > /dev/null 2>&1"; then
+if ssh -o ConnectTimeout=10 -i "$SSH_KEY" "$EC2_HOST" "curl -s -f http://localhost:8083/api/v1/payments/health > /dev/null 2>&1"; then
     echo -e "${GREEN}✓ Application is running!${NC}\n"
 
     # Extract hostname from EC2_HOST
@@ -94,15 +110,15 @@ if ssh -o ConnectTimeout=10 -i "$SSH_KEY" "$EC2_HOST" "curl -s -f http://localho
     echo -e "${GREEN}========================================${NC}\n"
 
     echo -e "${YELLOW}API Endpoints:${NC}"
-    echo "  http://$HOSTNAME:8080/api/v1/auth/register"
-    echo "  http://$HOSTNAME:8080/api/v1/auth/login"
-    echo "  http://$HOSTNAME:8080/swagger-ui/index.html"
+    echo "  http://$HOSTNAME:8083/api/v1/cart"
+    echo "  http://$HOSTNAME:8083/api/v1/checkout"
+    echo "  http://$HOSTNAME:8083/api/v1/orders"
+    echo "  http://$HOSTNAME:8083/api/v1/payments"
+    echo "  http://$HOSTNAME:8083/swagger-ui/index.html"
     echo ""
 
-    echo -e "${YELLOW}Test Registration:${NC}"
-    echo "  curl -X POST http://$HOSTNAME:8080/api/v1/auth/register \\"
-    echo "    -H 'Content-Type: application/json' \\"
-    echo "    -d '{\"username\":\"testuser\",\"email\":\"test@example.com\",\"password\":\"password123\"}'"
+    echo -e "${YELLOW}Test Payment Health:${NC}"
+    echo "  curl http://$HOSTNAME:8083/api/v1/payments/health"
     echo ""
 
     echo -e "${YELLOW}View Logs:${NC}"
@@ -115,6 +131,7 @@ else
     echo ""
     echo -e "${YELLOW}If it's not running, check:${NC}"
     echo "  1. Java 21 is installed: ssh -i $SSH_KEY $EC2_HOST 'java -version'"
-    echo "  2. AWS credentials are set in .env.prod on EC2"
-    echo "  3. Security group allows port 8080"
+    echo "  2. Environment variables are set: ssh -i $SSH_KEY $EC2_HOST 'source /etc/profile.d/lunari-cart-env.sh && env | grep -E \"DB_|USUARIO_|INVENTARIO_|TRANSBANK_\"'"
+    echo "  3. Security group allows port 8083"
+    echo "  4. Other services (Usuario, Inventario) are accessible"
 fi

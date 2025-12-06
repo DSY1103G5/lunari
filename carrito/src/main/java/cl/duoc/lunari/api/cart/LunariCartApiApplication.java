@@ -10,10 +10,20 @@ public class LunariCartApiApplication {
 
 	public static void main(String[] args) {
 		try {
-			Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-			dotenv.entries().forEach(e -> System.setProperty(e.getKey(), e.getValue()));
+			System.out.println("Loading .env file...");
+			Dotenv dotenv = Dotenv.configure()
+					.directory(".")
+					.ignoreIfMissing()
+					.load();
+
+			System.out.println("Found " + dotenv.entries().size() + " environment variables in .env");
+			dotenv.entries().forEach(e -> {
+				System.setProperty(e.getKey(), e.getValue());
+				System.out.println("  - " + e.getKey() + " = " + (e.getKey().contains("PASSWORD") ? "****" : e.getValue()));
+			});
 		} catch (Exception e) {
-			System.out.println("No .env file found, using application properties");
+			System.out.println("No .env file found, using application.properties defaults");
+			System.out.println("Error: " + e.getMessage());
 		}
 		SpringApplication.run(LunariCartApiApplication.class, args);
 	}

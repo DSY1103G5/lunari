@@ -29,20 +29,14 @@ public class LoginResponse {
     @Schema(description = "Nombre completo del usuario", example = "Oscar Muñoz")
     private String fullName;
 
-    @Schema(description = "Rol del usuario", example = "CLIENT")
-    private String role;
-
-    @Schema(description = "ID del rol", example = "3")
-    private Integer roleId;
-
     @Schema(description = "Indica si el usuario está activo", example = "true")
     private Boolean isActive;
 
     @Schema(description = "Indica si el usuario está verificado", example = "true")
     private Boolean isVerified;
 
-    @Schema(description = "Token de sesión (simple session token)")
-    private String sessionToken;
+    @Schema(description = "Token JWT para autenticación")
+    private String token;
 
     @Schema(description = "Nivel del usuario", example = "Gold")
     private String level;

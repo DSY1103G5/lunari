@@ -125,4 +125,24 @@ public class ProductoService {
         p.setStock(nuevoStock);
         return productoRepository.save(p);
     }
+
+    public Producto reducirStock(Integer id, Integer cantidad) {
+        Optional<Producto> producto = productoRepository.findById(id);
+        if (producto.isEmpty()) {
+            throw new RuntimeException("Producto no encontrado con ID: " + id);
+        }
+
+        Producto p = producto.get();
+
+        if (cantidad <= 0) {
+            throw new RuntimeException("La cantidad a reducir debe ser mayor a 0");
+        }
+
+        if (p.getStock() < cantidad) {
+            throw new RuntimeException("Stock insuficiente. Stock actual: " + p.getStock() + ", cantidad solicitada: " + cantidad);
+        }
+
+        p.setStock(p.getStock() - cantidad);
+        return productoRepository.save(p);
+    }
 }

@@ -34,3 +34,4 @@ build/
 
 # Environment variables
 .env
+infraestructure/lunari-cart-env.sh
