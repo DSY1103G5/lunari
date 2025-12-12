@@ -1,5 +1,10 @@
 HELP.md
 target/
+
+### Documentation - ignore all .md except specific files ###
+*.md
+!README.md
+!CLAUDE.md
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -37,3 +42,9 @@ build/
 
 ### Environment ###
 *.env
+*.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
