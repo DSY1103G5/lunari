@@ -76,7 +76,7 @@ public class AuthController {
                 .coupons(createdUser.getCoupons())
                 .isActive(createdUser.getIsActive())
                 .isVerified(createdUser.getIsVerified())
-                .createdAt(createdUser.getCreatedAt())
+                .createdAt(createdUser.getCreatedAt() != null ? createdUser.getCreatedAt().toString() : null)
                 .build();
 
         log.info("User registered successfully: {}", createdUser.getId());

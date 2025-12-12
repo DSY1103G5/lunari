@@ -1,0 +1,250 @@
+# Kubernetes deployment for LUNARi Carrito Service
+# Prerequisites:
+# 1. GKE cluster created
+# 2. NeonDB database created at https://neon.tech
+# 3. Secrets created in Google Secret Manager
+# 4. Update IMAGE_URL and secret values below
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: carrito-config
+  namespace: default
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  DB_PORT: "5432"
+  USUARIO_SERVICE_URL: "https://user.aframuz.dev"
+  INVENTARIO_SERVICE_URL: "https://inventory.aframuz.dev"
+  TRANSBANK_ENVIRONMENT: "TEST"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: carrito-secrets
+  namespace: default
+type: Opaque
+stringData:
+  # Get these values from your NeonDB dashboard at https://neon.tech
+  DB_HOST: "ep-xyz-123.us-east-1.aws.neon.tech"  # CHANGE THIS
+  DB_NAME: "lunari_cart"
+  DB_USER: "neondb_user"  # CHANGE THIS
+  DB_PASSWORD: "CHANGE_THIS_PASSWORD"  # CHANGE THIS
+  TRANSBANK_API_KEY: "597055555532"  # CHANGE THIS for production
+  TRANSBANK_COMMERCE_CODE: "597055555532"  # CHANGE THIS for production
+  # Note: For production, use Google Secret Manager or External Secrets Operator
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carrito-deployment
+  namespace: default
+  labels:
+    app: carrito
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: carrito
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: carrito
+        version: v1
+    spec:
+      containers:
+      # Main application container
+      - name: carrito
+        image: us-central1-docker.pkg.dev/PROJECT_ID/lunari-services/carrito:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8083
+          protocol: TCP
+
+        envFrom:
+        - configMapRef:
+            name: carrito-config
+        - secretRef:
+            name: carrito-secrets
+
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8083
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8083
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]
+
+        # Security context
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carrito-service
+  namespace: default
+  labels:
+    app: carrito
+spec:
+  type: LoadBalancer  # Use ClusterIP for internal-only, LoadBalancer for external access
+  selector:
+    app: carrito
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8083
+    protocol: TCP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: carrito-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: carrito-deployment
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 15
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 2
+        periodSeconds: 15
+      selectPolicy: Max
+
+---
+# Pod Disruption Budget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: carrito-pdb
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: carrito
+
+---
+# Network Policy (optional - for security)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: carrito-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: carrito
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}  # Allow from any pod in the namespace
+    ports:
+    - protocol: TCP
+      port: 8083
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: usuario  # Allow connection to usuario service
+    ports:
+    - protocol: TCP
+      port: 8081
+  - to:
+    - podSelector:
+        matchLabels:
+          app: inventario  # Allow connection to inventario service
+    ports:
+    - protocol: TCP
+      port: 8082
+  - to:
+    - podSelector:
+        matchLabels:
+          app: cloud-sql-proxy
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:  # Allow DNS
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+  - to:  # Allow HTTPS for external APIs (Transbank)
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443

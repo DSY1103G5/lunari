@@ -1,9 +1,10 @@
 package cl.duoc.lunari.api.user.service;
 
 import cl.duoc.lunari.api.user.dto.UpdateProfileRequest;
+import cl.duoc.lunari.api.user.exception.AccountInactiveException;
+import cl.duoc.lunari.api.user.exception.InvalidCredentialsException;
 import cl.duoc.lunari.api.user.model.*;
 import cl.duoc.lunari.api.user.repository.UserRepository;
-import cl.duoc.lunari.api.user.util.DateTimeUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,10 +47,7 @@ public class UserServiceImpl implements UserService {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
 
-        // Set timestamps
-        String now = DateTimeUtil.now();
-        user.setCreatedAt(now);
-        user.setUpdatedAt(now);
+        // Timestamps are automatically set by JPA @PrePersist in User entity
 
         // Initialize personal info
         if (user.getPersonal() == null) {
@@ -102,7 +100,7 @@ public class UserServiceImpl implements UserService {
         // For now, only support email authentication
         if (userOptional.isEmpty()) {
             log.warn("User not found with identifier: {}", identifier);
-            throw new RuntimeException("Invalid credentials");
+            throw new InvalidCredentialsException("Invalid credentials");
         }
 
         User user = userOptional.get();
@@ -110,7 +108,7 @@ public class UserServiceImpl implements UserService {
         // Verify user is active
         if (!Boolean.TRUE.equals(user.getIsActive())) {
             log.warn("Inactive user attempted login: {}", identifier);
-            throw new RuntimeException("Account is inactive. Please contact support.");
+            throw new AccountInactiveException("Account is inactive. Please contact support.");
         }
 
         // Password verification with BCrypt migration support
@@ -128,14 +126,14 @@ public class UserServiceImpl implements UserService {
                 // Auto-upgrade to BCrypt
                 log.info("Migrating plain text password to BCrypt for user: {}", identifier);
                 user.setPassword(passwordEncoder.encode(password));
-                user.setUpdatedAt(DateTimeUtil.now());
+                // updatedAt automatically set by JPA @PreUpdate
                 userRepository.save(user);
             }
         }
 
         if (!passwordMatches) {
             log.warn("Invalid password for user: {}", identifier);
-            throw new RuntimeException("Invalid credentials");
+            throw new InvalidCredentialsException("Invalid credentials");
         }
 
         log.info("Successful authentication for user: {} (ID: {})", identifier, user.getId());
@@ -201,7 +199,7 @@ public class UserServiceImpl implements UserService {
             user.setPreferences(request.getPreferences());
         }
 
-        user.setUpdatedAt(DateTimeUtil.now());
+        // updatedAt automatically set by JPA @PreUpdate
 
         log.info("Updated profile for user: {}", userId);
         return userRepository.save(user);
@@ -219,7 +217,7 @@ public class UserServiceImpl implements UserService {
         }
 
         user.getStats().addPoints(points);
-        user.setUpdatedAt(DateTimeUtil.now());
+        // updatedAt automatically set by JPA @PreUpdate
 
         log.info("Added {} points to user {}: Total: {}", points, userId, user.getStats().getPoints());
         return userRepository.save(user);
@@ -276,7 +274,7 @@ public class UserServiceImpl implements UserService {
         }
         user.getCoupons().add(coupon);
 
-        user.setUpdatedAt(DateTimeUtil.now());
+        // updatedAt automatically set by JPA @PreUpdate
         userRepository.save(user);
 
         log.info("User {} redeemed {} points for ${} coupon ({})", userId, pointsToRedeem, couponValue, level);
@@ -298,7 +296,7 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Coupon not found with ID: " + couponId);
         }
 
-        user.setUpdatedAt(DateTimeUtil.now());
+        // updatedAt automatically set by JPA @PreUpdate
         userRepository.save(user);
 
         log.info("Removed coupon {} from user {}", couponId, userId);

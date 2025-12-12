@@ -3,8 +3,6 @@ package cl.duoc.lunari.api.user.model;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
-import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 
 import java.util.List;
 
@@ -13,11 +11,12 @@ import java.util.List;
  *
  * Contiene configuraciones de notificaciones, categorías favoritas,
  * plataforma preferida y horarios de juego.
+ *
+ * Esta clase se serializa como JSON en PostgreSQL.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@DynamoDbBean
 public class ClientPreferences {
 
     private List<String> favoriteCategories;  // Categorías favoritas (JM, CG, AC, etc.)
@@ -29,69 +28,6 @@ public class ClientPreferences {
     private Boolean notifyNewProducts = true;   // Notificar nuevos productos
     private Boolean notifyRestocks = false;     // Notificar reposiciones
     private Boolean notifyNewsletter = true;    // Suscribirse a newsletter
-
-    @DynamoDbAttribute("favoriteCategories")
-    public List<String> getFavoriteCategories() {
-        return favoriteCategories;
-    }
-
-    public void setFavoriteCategories(List<String> favoriteCategories) {
-        this.favoriteCategories = favoriteCategories;
-    }
-
-    @DynamoDbAttribute("preferredPlatform")
-    public String getPreferredPlatform() {
-        return preferredPlatform;
-    }
-
-    public void setPreferredPlatform(String preferredPlatform) {
-        this.preferredPlatform = preferredPlatform;
-    }
-
-    @DynamoDbAttribute("gamingHours")
-    public String getGamingHours() {
-        return gamingHours;
-    }
-
-    public void setGamingHours(String gamingHours) {
-        this.gamingHours = gamingHours;
-    }
-
-    @DynamoDbAttribute("notifyOffers")
-    public Boolean getNotifyOffers() {
-        return notifyOffers;
-    }
-
-    public void setNotifyOffers(Boolean notifyOffers) {
-        this.notifyOffers = notifyOffers;
-    }
-
-    @DynamoDbAttribute("notifyNewProducts")
-    public Boolean getNotifyNewProducts() {
-        return notifyNewProducts;
-    }
-
-    public void setNotifyNewProducts(Boolean notifyNewProducts) {
-        this.notifyNewProducts = notifyNewProducts;
-    }
-
-    @DynamoDbAttribute("notifyRestocks")
-    public Boolean getNotifyRestocks() {
-        return notifyRestocks;
-    }
-
-    public void setNotifyRestocks(Boolean notifyRestocks) {
-        this.notifyRestocks = notifyRestocks;
-    }
-
-    @DynamoDbAttribute("notifyNewsletter")
-    public Boolean getNotifyNewsletter() {
-        return notifyNewsletter;
-    }
-
-    public void setNotifyNewsletter(Boolean notifyNewsletter) {
-        this.notifyNewsletter = notifyNewsletter;
-    }
 
     /**
      * Crea preferencias por defecto para un nuevo cliente.

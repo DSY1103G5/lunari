@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -30,7 +31,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
 
     public ApiKeyFilter(ApiKeyProperties apiKeyProperties,
-                       RequestMappingHandlerMapping handlerMapping,
+                       @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping,
                        ObjectMapper objectMapper) {
         this.apiKeyProperties = apiKeyProperties;
         this.handlerMapping = handlerMapping;

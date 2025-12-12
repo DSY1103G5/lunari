@@ -60,7 +60,7 @@ public class UserProfileController {
                 .coupons(user.getCoupons())
                 .isActive(user.getIsActive())
                 .isVerified(user.getIsVerified())
-                .createdAt(user.getCreatedAt())
+                .createdAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null)
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -96,7 +96,7 @@ public class UserProfileController {
                 .coupons(updatedUser.getCoupons())
                 .isActive(updatedUser.getIsActive())
                 .isVerified(updatedUser.getIsVerified())
-                .createdAt(updatedUser.getCreatedAt())
+                .createdAt(updatedUser.getCreatedAt() != null ? updatedUser.getCreatedAt().toString() : null)
                 .build();
 
         log.info("Profile updated successfully for user: {}", updatedUser.getId());

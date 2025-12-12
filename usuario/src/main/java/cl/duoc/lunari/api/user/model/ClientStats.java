@@ -3,19 +3,18 @@ package cl.duoc.lunari.api.user.model;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
-import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 
 /**
  * Estadísticas del cliente en la plataforma.
  *
  * Contiene información sobre el nivel del cliente, puntos de fidelidad,
  * cantidad de compras, reseñas y favoritos.
+ *
+ * Esta clase se serializa como JSON en PostgreSQL.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@DynamoDbBean
 public class ClientStats {
 
     private String level = "Bronze";    // Nivel del cliente (Bronze, Silver, Gold, Platinum, etc.)
@@ -23,51 +22,6 @@ public class ClientStats {
     private Integer purchases = 0;      // Número de compras realizadas
     private Integer reviews = 0;        // Número de reseñas escritas
     private Integer favorites = 0;      // Número de productos en favoritos
-
-    @DynamoDbAttribute("level")
-    public String getLevel() {
-        return level;
-    }
-
-    public void setLevel(String level) {
-        this.level = level;
-    }
-
-    @DynamoDbAttribute("points")
-    public Long getPoints() {
-        return points;
-    }
-
-    public void setPoints(Long points) {
-        this.points = points;
-    }
-
-    @DynamoDbAttribute("purchases")
-    public Integer getPurchases() {
-        return purchases;
-    }
-
-    public void setPurchases(Integer purchases) {
-        this.purchases = purchases;
-    }
-
-    @DynamoDbAttribute("reviews")
-    public Integer getReviews() {
-        return reviews;
-    }
-
-    public void setReviews(Integer reviews) {
-        this.reviews = reviews;
-    }
-
-    @DynamoDbAttribute("favorites")
-    public Integer getFavorites() {
-        return favorites;
-    }
-
-    public void setFavorites(Integer favorites) {
-        this.favorites = favorites;
-    }
 
     /**
      * Crea estadísticas por defecto para un nuevo cliente.

@@ -1,222 +1,124 @@
 package cl.duoc.lunari.api.user.model;
 
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.*;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
- * Entidad User (Cliente) para DynamoDB.
+ * Entidad User (Cliente) para PostgreSQL.
  *
  * Representa un cliente en la plataforma e-commerce LUNARi con información completa
  * de perfil personal, dirección, preferencias gaming, estadísticas y cupones.
  *
- * Tabla: lunari-users
- * Primary Key: id (Partition Key) - ID numérico o UUID como String
- * GSI #1: EmailIndex (email como PK) - Para autenticación
- * GSI #2: UsernameIndex (username como PK) - Para búsqueda por username
+ * Tabla: users
+ * Primary Key: id (UUID)
+ * Indexes: email (unique), username (unique)
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@DynamoDbBean
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_email", columnList = "email", unique = true),
+    @Index(name = "idx_username", columnList = "username", unique = true)
+})
 public class User {
 
     // ==================== Identificación ====================
 
-    @Schema(example = "1")
-    private String id; // ID del usuario (puede ser numérico o UUID)
+    @Id
+    @Column(name = "id", updatable = false, nullable = false)
+    @Schema(example = "123e4567-e89b-12d3-a456-426614174000")
+    private String id; // ID del usuario (UUID)
 
     @NotBlank(message = "Username no puede estar vacío")
+    @Column(name = "username", unique = true, nullable = false, length = 50)
     @Schema(example = "omunoz")
     private String username; // Nombre de usuario único
 
     @Email
     @NotBlank(message = "Email no puede estar vacío")
+    @Column(name = "email", unique = true, nullable = false, length = 100)
     @Schema(example = "osca.munozs@duocuc.cl")
     private String email;
 
     @NotBlank(message = "Contraseña no puede estar vacía")
-    @Size(min = 8, max = 64, message = "Contraseña debe tener entre 8 y 64 caracteres")
+    @Size(min = 8, max = 255, message = "Contraseña debe tener entre 8 y 255 caracteres")
+    @Column(name = "password", nullable = false)
     @Schema(example = "hashedPassword123")
     private String password;
 
-    // ==================== Información del Cliente ====================
+    // ==================== Información del Cliente (JSON) ====================
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "personal", columnDefinition = "jsonb")
     private Personal personal;              // Información personal (nombre, teléfono, bio, etc.)
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "address", columnDefinition = "jsonb")
     private Address address;                // Dirección de envío
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "preferences", columnDefinition = "jsonb")
     private ClientPreferences preferences;  // Preferencias de notificaciones y categorías
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "gaming", columnDefinition = "jsonb")
     private Gaming gaming;                  // Perfil gaming del usuario
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "stats", columnDefinition = "jsonb")
     private ClientStats stats;              // Estadísticas (nivel, puntos, compras, etc.)
 
     // ==================== Cupones ====================
 
+    @Convert(converter = cl.duoc.lunari.api.user.converter.CouponListConverter.class)
+    @Column(name = "coupons", columnDefinition = "jsonb")
     private List<Coupon> coupons;           // Cupones del cliente
 
     // ==================== Estado y Verificación ====================
 
+    @Column(name = "is_active", nullable = false)
     @Schema(example = "true")
     private Boolean isActive = true;
 
+    @Column(name = "is_verified", nullable = false)
     @Schema(example = "true")
     private Boolean isVerified = false;
 
     // ==================== Timestamps ====================
 
-    @Schema(example = "2025-01-01T12:00:00Z")
-    private String createdAt; // ISO 8601 timestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Schema(example = "2025-01-01T12:00:00")
+    private LocalDateTime createdAt; // Timestamp de creación
 
-    @Schema(example = "2025-07-04T14:30:00Z")
-    private String updatedAt; // ISO 8601 timestamp
+    @Column(name = "updated_at", nullable = false)
+    @Schema(example = "2025-07-04T14:30:00")
+    private LocalDateTime updatedAt; // Timestamp de última actualización
 
-    // ==================== DynamoDB Annotations ====================
-
-    /**
-     * Primary Key (Partition Key) - id.
-     */
-    @DynamoDbPartitionKey
-    @DynamoDbAttribute("id")
-    public String getId() {
-        return id;
+    @PrePersist
+    protected void onCreate() {
+        if (id == null) {
+            id = UUID.randomUUID().toString();
+        }
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    /**
-     * GSI #1: EmailIndex - Partition Key.
-     * Permite búsqueda rápida por email (autenticación).
-     */
-    @DynamoDbSecondaryPartitionKey(indexNames = "EmailIndex")
-    @DynamoDbAttribute("email")
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    /**
-     * GSI #2: UsernameIndex - Partition Key.
-     * Permite búsqueda rápida por username.
-     */
-    @DynamoDbSecondaryPartitionKey(indexNames = "UsernameIndex")
-    @DynamoDbAttribute("username")
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    // ==================== Getters y Setters con DynamoDbAttribute ====================
-
-    @DynamoDbAttribute("password")
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    @DynamoDbAttribute("personal")
-    public Personal getPersonal() {
-        return personal;
-    }
-
-    public void setPersonal(Personal personal) {
-        this.personal = personal;
-    }
-
-    @DynamoDbAttribute("address")
-    public Address getAddress() {
-        return address;
-    }
-
-    public void setAddress(Address address) {
-        this.address = address;
-    }
-
-    @DynamoDbAttribute("preferences")
-    public ClientPreferences getPreferences() {
-        return preferences;
-    }
-
-    public void setPreferences(ClientPreferences preferences) {
-        this.preferences = preferences;
-    }
-
-    @DynamoDbAttribute("gaming")
-    public Gaming getGaming() {
-        return gaming;
-    }
-
-    public void setGaming(Gaming gaming) {
-        this.gaming = gaming;
-    }
-
-    @DynamoDbAttribute("stats")
-    public ClientStats getStats() {
-        return stats;
-    }
-
-    public void setStats(ClientStats stats) {
-        this.stats = stats;
-    }
-
-    @DynamoDbAttribute("coupons")
-    public List<Coupon> getCoupons() {
-        return coupons;
-    }
-
-    public void setCoupons(List<Coupon> coupons) {
-        this.coupons = coupons;
-    }
-
-    @DynamoDbAttribute("isActive")
-    public Boolean getIsActive() {
-        return isActive;
-    }
-
-    public void setIsActive(Boolean isActive) {
-        this.isActive = isActive;
-    }
-
-    @DynamoDbAttribute("isVerified")
-    public Boolean getIsVerified() {
-        return isVerified;
-    }
-
-    public void setIsVerified(Boolean isVerified) {
-        this.isVerified = isVerified;
-    }
-
-    @DynamoDbAttribute("createdAt")
-    public String getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(String createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    @DynamoDbAttribute("updatedAt")
-    public String getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(String updatedAt) {
-        this.updatedAt = updatedAt;
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
     // ==================== Helper Methods ====================

@@ -1,0 +1,229 @@
+# Kubernetes deployment for LUNARi Usuario Service
+# Prerequisites:
+# 1. GKE cluster created
+# 2. NeonDB database created at https://neon.tech
+# 3. Secrets created in Google Secret Manager
+# 4. Update IMAGE_URL and secret values below
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: usuario-config
+  namespace: default
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  DB_PORT: "5432"
+  # DB_HOST will come from secret - NeonDB host directly
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: usuario-secrets
+  namespace: default
+type: Opaque
+stringData:
+  # Get these values from your NeonDB dashboard at https://neon.tech
+  DB_HOST: "ep-xyz-123.us-east-1.aws.neon.tech"  # CHANGE THIS
+  DB_NAME: "lunari_users"
+  DB_USER: "neondb_user"  # CHANGE THIS
+  DB_PASSWORD: "CHANGE_THIS_PASSWORD"  # CHANGE THIS
+  # Note: For production, use Google Secret Manager or External Secrets Operator
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: usuario-deployment
+  namespace: default
+  labels:
+    app: usuario
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: usuario
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: usuario
+        version: v1
+    spec:
+      containers:
+      # Main application container
+      - name: usuario
+        image: us-central1-docker.pkg.dev/PROJECT_ID/lunari-services/usuario:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8081
+          protocol: TCP
+
+        envFrom:
+        - configMapRef:
+            name: usuario-config
+        - secretRef:
+            name: usuario-secrets
+
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8081
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]
+
+        # Security context
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: usuario-service
+  namespace: default
+  labels:
+    app: usuario
+spec:
+  type: LoadBalancer  # Use ClusterIP for internal-only, LoadBalancer for external access
+  selector:
+    app: usuario
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8081
+    protocol: TCP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: usuario-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: usuario-deployment
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 15
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 2
+        periodSeconds: 15
+      selectPolicy: Max
+
+---
+# Pod Disruption Budget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: usuario-pdb
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: usuario
+
+---
+# Network Policy (optional - for security)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: usuario-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: usuario
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: carrito  # Allow carrito service to connect
+    ports:
+    - protocol: TCP
+      port: 8081
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: cloud-sql-proxy
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:  # Allow DNS
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53

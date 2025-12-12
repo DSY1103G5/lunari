@@ -7,8 +7,7 @@ import java.time.format.DateTimeParseException;
 /**
  * Utilidad para conversión entre OffsetDateTime y String ISO 8601.
  *
- * DynamoDB almacena timestamps como String en formato ISO 8601,
- * este util facilita la conversión bidireccional para trabajar con
+ * Facilita la conversión bidireccional para trabajar con
  * objetos Java OffsetDateTime en la capa de aplicación.
  */
 public class DateTimeUtil {
